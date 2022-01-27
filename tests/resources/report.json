@@ -1,0 +1,140 @@
+{
+  "url": "https://www.meterian.com/projects/?pid=d86df6bd-d12d-4a54-b6b9-d214e0d53c4e&branch=add-meterian-gh-action-workflow-oss&mode=eli",
+  "name": "meterianhq/meterian-bibles-tool",
+  "timestamp": "2022-01-04 10:37:46",
+  "scores": {
+    "stability": "100",
+    "security": "100",
+    "licensing": "100"
+  },
+  "reports": {
+    "security": {
+      "score": 100,
+      "reports": [
+        {
+          "language": "python",
+          "reports": []
+        }
+      ]
+    },
+    "stability": {
+      "reports": [
+        {
+          "language": "python",
+          "versions": [
+            {
+              "name": "charset-normalizer",
+              "version": "2.0.7",
+              "latestPatch": "2.0.9"
+            },
+            {
+              "name": "requests",
+              "version": "2.26.0",
+              "latestMinor": "2.27.0"
+            }
+          ]
+        }
+      ]
+    },
+    "licensing": {
+      "reports": [
+        {
+          "language": "python",
+          "results": [
+            {
+              "name": "certifi",
+              "version": "2021.10.8",
+              "warnings": [],
+              "violations": [],
+              "licenses": [
+                {
+                  "id": "MPL-2.0",
+                  "name": "Mozilla Public License 2.0",
+                  "uri": "https://spdx.org/licenses/MPL-2.0.html",
+                  "wildcard": false
+                }
+              ]
+            },
+            {
+              "name": "charset-normalizer",
+              "version": "2.0.7",
+              "warnings": [],
+              "violations": [],
+              "licenses": [
+                {
+                  "id": "MIT",
+                  "name": "MIT License",
+                  "uri": "https://spdx.org/licenses/MIT.html",
+                  "wildcard": false
+                }
+              ]
+            },
+            {
+              "name": "idna",
+              "version": "3.3",
+              "warnings": [],
+              "violations": [],
+              "licenses": [
+                {
+                  "id": "BSD",
+                  "name": "BSD License (Generic)",
+                  "uri": "http://www.linfo.org/bsdlicense.html",
+                  "wildcard": true
+                }
+              ]
+            },
+            {
+              "name": "requests",
+              "version": "2.26.0",
+              "warnings": [],
+              "violations": [],
+              "licenses": [
+                {
+                  "id": "Apache-1.0",
+                  "name": "Apache License 1.0",
+                  "uri": "https://spdx.org/licenses/Apache-1.0.html",
+                  "wildcard": false
+                }
+              ]
+            },
+            {
+              "name": "urllib3",
+              "version": "1.26.7",
+              "warnings": [],
+              "violations": [],
+              "licenses": [
+                {
+                  "id": "MIT",
+                  "name": "MIT License",
+                  "uri": "https://spdx.org/licenses/MIT.html",
+                  "wildcard": false
+                }
+              ]
+            }
+          ],
+          "warningsCount": 0,
+          "violationsCount": 0
+        }
+      ],
+      "warningsCount": 0,
+      "violationsCount": 0
+    }
+  },
+  "autofix": {
+    "applied": true,
+    "modestring": "vulns+conservative,date+safe",
+    "changes": [
+      {
+        "name": "charset-normalizer",
+        "version": "2.0.7",
+        "upgradedTo": "2.0.9",
+        "upgradedAs": "patch",
+        "reason": "stability",
+        "live": true,
+        "versions": {
+          "latestPatch": "2.0.9"
+        }
+      }
+    ]
+  }
+}
