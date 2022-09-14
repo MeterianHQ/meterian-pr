@@ -15,7 +15,7 @@ from vcs.PrOrchestrator import PrOrchestrator
 from gitbot.GitbotMessageGenerator import GitbotMessageGenerator
 from pathlib import Path
 
-CODE_HOSTING_PLATFORMS = [ "github" ] #, "bitbucket" ]
+VCS_PLATFORMS = [ "github" ] #, "bitbucket" ]
 
 DEFAULT_AUTHORS_BY_PLATFORM = {
     "github": GithubRepo.DEFAULT_COMMITTER_DATA
@@ -24,9 +24,9 @@ DEFAULT_AUTHORS_BY_PLATFORM = {
 
 ACTIONS = [ "PR", "ISSUE" ]
 
-PROJECT_DIR = Path(os.getcwd())
+WORK_DIR = None
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 log = logging.getLogger("Main")
 
@@ -37,9 +37,8 @@ class HelpingParser(argparse.ArgumentParser):
         sys.stderr.write('\n')
         sys.exit(-1)
 
-#TEMPORARY CHANGES FIXME
 def logHttpRequests():
-    # http.client.HTTPConnection.debuglevel = 1
+    http.client.HTTPConnection.debuglevel = 1
 
     requests_log = logging.getLogger("requests.packages.urllib3")
     requests_log.setLevel(logging.INFO)
@@ -49,7 +48,8 @@ def logHttpRequests():
 
 def parse_args():
     parser = HelpingParser()
-    parser.add_argument("action", help="The action you want to perform as a result of the autofix results\n (i.e. PR: open a pull request on the codebase repository; ISSUE: open an issue on the codebase repository)")
+    parser.add_argument("workdir", help="The path to the work directory")
+    parser.add_argument("action", help="The action you want to perform as a result of the autofix results\n (i.e. PR: open a pull request on the a repository; ISSUE: open an issue on a repository)")
     parser.add_argument("report", help="The path to the Meterian JSON report")
     parser.add_argument("repository", help="The name of the remote repository\n (i.e. aws/aws-cli)")
     parser.add_argument("branch", help="The name of the current branch (must be a branch available remotely)")
@@ -64,10 +64,10 @@ def parse_args():
 
     parser.add_argument(
         "-v",
-        "--vcshub",
+        "--vcs",
         default="github",
-        metavar="VCSHUB",
-        help="The code hosting platform where your codebase is hosted\n (i.e. github) (default is github)"
+        metavar="VCS",
+        help="The version control system where your repository is hosted\n (i.e. github) (default is github)"
     )
 
     parser.add_argument(
@@ -99,8 +99,10 @@ def initLogging(args):
     if level is None:
         raise ValueError("Invalid log level requested - must be one of the following " + levels.keys())
 
-    #TODO figure out what is wrong with this
-    # logging.basicConfig(format='%(time)s-%(levelname)s-%(message)s')
+    logging.basicConfig(
+        level = level,
+        format='%(asctime)-15s - %(levelname)-6s - %(name)s :: %(message)s'
+    )
 
     if level == logging.DEBUG:
         logHttpRequests()
@@ -122,12 +124,20 @@ def generate_contribution_content(gitbot: GitbotMessageGenerator, meterian_json_
 
 
 if __name__ ==  "__main__":
+    print()
+
     args = parse_args()
     initLogging(args)
 
-    if args.vcshub not in CODE_HOSTING_PLATFORMS:
-        sys.stderr.write("Invalid code hosting platform: %s\n" % args.vcshub)
-        sys.stderr.write("Available code hosting platforms are: %s\n" % str(CODE_HOSTING_PLATFORMS))
+    WORK_DIR = args.workdir
+    if os.path.exists(WORK_DIR) is False:
+        sys.stderr.write("Work directory %s does not exist\n" % WORK_DIR)
+        sys.stderr.write("\n")
+        sys.exit(-1)
+
+    if args.vcs not in VCS_PLATFORMS:
+        sys.stderr.write("Invalid version control system: %s\n" % args.vcshub)
+        sys.stderr.write("Available ones are: %s\n" % str(VCS_PLATFORMS))
         sys.stderr.write("\n")
         sys.exit(-1)
 
@@ -162,18 +172,18 @@ if __name__ ==  "__main__":
                     sys.stderr.write("\n")
                     sys.exit(-1)
                 else:
-                    if PROJECT_DIR in Path(meterian_pdf_report_path).parents:
-                        log.debug("Specified PDF report %s relative to project dir %s", meterian_pdf_report_path, str(PROJECT_DIR))
-                        meterian_pdf_report_path = Path(meterian_pdf_report_path).relative_to(PROJECT_DIR)
+                    if WORK_DIR in Path(meterian_pdf_report_path).parents:
+                        log.debug("Specified PDF report %s relative to project dir %s", meterian_pdf_report_path, str(WORK_DIR))
+                        meterian_pdf_report_path = Path(meterian_pdf_report_path).relative_to(WORK_DIR)
                         log.debug("Will use relative path of PDF report %s", meterian_pdf_report_path)
                     else:
-                        log.warning("PDF report %s will be ignored as it's not relative to project %s", meterian_pdf_report_path, str(PROJECT_DIR))
+                        log.warning("PDF report %s will be ignored as it's not relative to project %s", meterian_pdf_report_path, str(WORK_DIR))
             elif args.action == "ISSUE":
                 log.warning("Unsupported option '--with-pdf-report' being used with action 'ISSUE, it will be ignored")
 
-    vcsPlatform = VcsHubFactory(args.vcshub).create()
+    vcsPlatform = VcsHubFactory(args.vcs).create()
     if vcsPlatform is None:
-        sys.stderr.write("Unable to create an instance for the " +args.vcshub.title()+ " platform, ensure appropriate access token environment variables are appropriately set\n")
+        sys.stderr.write("Unable to create an instance for the " +args.vcs.title()+ " platform, ensure appropriate access token environment variables are appropriately set\n")
         sys.stderr.write("Ensure these environment variables are set per platform:\n")
 
         for key, value in VcsHubFactory.PLATFORMS_AND_ENVVARS.items():
@@ -194,7 +204,7 @@ if __name__ ==  "__main__":
             sys.stderr.write("\n")
             sys.exit(-1)
     else:
-        sys.stderr.write("Repository %s was not found on %s\n" % (args.repository, args.vcshub))
+        sys.stderr.write("Repository %s was not found on %s\n" % (args.repository, args.vcs))
         sys.stderr.write("\n")
         sys.exit(-1)
     
@@ -203,7 +213,7 @@ if __name__ ==  "__main__":
 
     if "PR" == args.action:
         if "autofix" in meterian_json_report:
-            git = GitCli(str(PROJECT_DIR))
+            git = GitCli(str(WORK_DIR))
             changes = git.get_changes()
             if changes is None:
                 sys.stderr.write("Change detection failed\n")
@@ -213,8 +223,8 @@ if __name__ ==  "__main__":
                 print("No changes were made in your repository therefore no pull request will be opened")
                 sys.exit(0)
 
-        author = DEFAULT_AUTHORS_BY_PLATFORM[args.vcshub]
-        pr_orchestrator = PrOrchestrator(remote_repo, author)
+        author = DEFAULT_AUTHORS_BY_PLATFORM[args.vcs]
+        pr_orchestrator = PrOrchestrator(WORK_DIR, remote_repo, author)
 
         pr_text_content = generate_contribution_content(gitbot_msg_generator, meterian_json_report, {
             GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,

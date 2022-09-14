@@ -3,6 +3,7 @@ import logging
 from .PullRequestInterface import PullRequestInterface
 from .RepositoryInterface import RepositoryInterface
 from .BranchHelper import BranchHelper
+from pathlib import Path
 
 class PrOrchestrator:
 
@@ -13,7 +14,8 @@ class PrOrchestrator:
 
     __log = logging.getLogger("PrOrchestrator")
 
-    def __init__(self, repository: RepositoryInterface, author: dict):
+    def __init__(self, workdir:Path, repository: RepositoryInterface, author: dict):
+        self.workdir = workdir
         self.repo = repository
         self.branch_helper = BranchHelper()
         self.author = author
@@ -26,25 +28,26 @@ class PrOrchestrator:
 
             manifest_file_name = os.path.basename(local_change_relative_path)
             if not manifest_file_name in self.SUPPORTED_MANIFESTFILES:
-                self.__log.debug("Ignoring changes on %s as the file is not a suppoerted manifest file", local_change_relative_path)
+                self.__log.debug("Ignoring changes on %s as the file is not a supported manifest file", local_change_relative_path)
                 continue
 
             pr_branch_ref = self.__create_pr_branch_ref(local_change_relative_path, base_branch)
             if pr_branch_ref is None:
                 print("Invalid PR branch ref was generated, hence no PR will be will be opened")
                 return
-            self.__log.debug("Created PR branch ref %s", pr_branch_ref)
+            else:
+                self.__log.debug("Created PR branch ref %s", pr_branch_ref)
 
             if not self.repo.create_branch(base_branch, pr_branch_ref):
                 print("Unable to create PR branch %s" % self.branch_helper.as_branch_name(pr_branch_ref))
                 return
             
-            manifest_file_contents = self.__read_file_bytes(os.path.abspath(local_change_relative_path))
+            manifest_file_contents = self.__read_file_bytes(str(Path(self.workdir, local_change_relative_path).absolute()))
             self.__log.debug("Read contents of manifest file %s", local_change_relative_path)
             pdf_report_contents = None
             if pdf_report_path:
                 self.__log.debug("Requested addition of PDF report in PR, reading contents...")
-                pdf_report_contents = self.__read_file_bytes(os.path.abspath(pdf_report_path))
+                pdf_report_contents = self.__read_file_bytes(str(Path(self.workdir, pdf_report_path).absolute()))
                 self.__log.debug("Read contents of PDF report %s", pdf_report_path)
             
             commit_message = "Update " + manifest_file_name

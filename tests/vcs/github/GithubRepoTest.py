@@ -17,6 +17,7 @@ from github.Branch import Branch
 from src.vcs.RepositoryInterface import RepositoryInterface
 from src.vcs.github.GithubRepo import GithubRepo
 from typing import List
+from src.vcs.PullRequestInterface import PullRequestInterface
 
 class GithubRepoTest(unittest.TestCase):
 
@@ -185,7 +186,7 @@ class GithubRepoTest(unittest.TestCase):
         pull.add_to_labels.assert_called_once_with(ANY)
         args = pull.add_to_labels.call_args[0]
         self.assertEqual(RepositoryInterface.METERIAN_BOT_PR_LABEL_NAME, args[0].name)
-        self.assertTrue(isinstance(pr, PullRequest))
+        self.assertTrue(isinstance(pr, PullRequestInterface))
     
     def test_should_create_pull_request_without_adding_meterian_label_when_label_cannot_be_retrieved(self):
         label = Mock(spec=Label)
@@ -199,7 +200,7 @@ class GithubRepoTest(unittest.TestCase):
 
         self.pyGithubRepo.create_pull.assert_called_once_with(title="title", body="body text", head="head", base="base")
         pull.add_to_labels.assert_not_called()
-        self.assertTrue(isinstance(pr, PullRequest))
+        self.assertTrue(isinstance(pr, PullRequestInterface))
 
     def test_should_create_pull_request_without_adding_meterian_label_when_pr_is_already_labelled(self):
         label = Mock(spec=Label)
@@ -216,7 +217,7 @@ class GithubRepoTest(unittest.TestCase):
         self.pyGithubRepo.create_pull.assert_called_once_with(title="title", body="body text", head="head", base="base")
         pull.get_labels.assert_called()
         pull.add_to_labels.assert_not_called()
-        self.assertTrue(isinstance(pr, PullRequest))
+        self.assertTrue(isinstance(pr, PullRequestInterface))
 
     def test_should_not_create_pull_request_when_exception_is_caught(self):
         self.pyGithubRepo.create_pull = MagicMock(side_effect=GithubException(500, {"message": "Error"}, None))
