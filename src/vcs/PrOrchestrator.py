@@ -7,7 +7,7 @@ from pathlib import Path
 
 class PrOrchestrator:
 
-    SUPPORTED_MANIFESTFILES = [ "pom.xml", "composer.json", "Gemfile", "Gemfile.lock", "Pipfile", "Pipfile.lock", "package.json", "package-lock.json" ]
+    SUPPORTED_MANIFEST_FILES = [ "pom.xml", "composer.json", "Gemfile", "Gemfile.lock", "Pipfile", "Pipfile.lock", "package.json", "package-lock.json" ]
 
     PR_CONTENT_TITLE_KEY = "title"
     PR_CONTENT_BODY_KEY = "message"
@@ -20,14 +20,14 @@ class PrOrchestrator:
         self.branch_helper = BranchHelper()
         self.author = author
 
-    def orchestarte(self, pr_text_content: dict, local_changes_relative_paths: list, base_branch: str, pdf_report_path: str = None):
+    def orchestrate(self, pr_text_content: dict, local_changes_relative_paths: list, base_branch: str, pdf_report_path: str = None):
         self.__log.debug("Changes detected were %s", str(local_changes_relative_paths))
         self.__log.debug("Will create branches and commit to these as appropriate...")
 
         for local_change_relative_path in local_changes_relative_paths:
 
             manifest_file_name = os.path.basename(local_change_relative_path)
-            if not manifest_file_name in self.SUPPORTED_MANIFESTFILES:
+            if not manifest_file_name in self.SUPPORTED_MANIFEST_FILES:
                 self.__log.debug("Ignoring changes on %s as the file is not a supported manifest file", local_change_relative_path)
                 continue
 

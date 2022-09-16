@@ -238,7 +238,7 @@ if __name__ ==  "__main__":
             sys.stderr.write("\n")
             sys.exit(-1)
     
-        pr_orchestrator.orchestarte(pr_text_content, changes, args.branch, meterian_pdf_report_path)
+        pr_orchestrator.orchestrate(pr_text_content, changes, args.branch, meterian_pdf_report_path)
 
     
     if "ISSUE" == args.action:

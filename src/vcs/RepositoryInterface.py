@@ -72,7 +72,7 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def commit_change(self, author: map, message: str, branch: str, path: str, content: bytes) -> bool:
+    def commit_change(self, author: dict, message: str, branch: str, path: str, content: bytes) -> bool:
         """Commits change to file on a branch"""
         raise NotImplementedError
 

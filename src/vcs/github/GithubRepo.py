@@ -70,7 +70,7 @@ class GithubRepo(RepositoryInterface):
             self.__log.debug("Unexpected exception caught while dealing with branch creation", exc_info=1)
             return False
 
-    def commit_change(self, author: map, message: str, branch: str, path: str, content: bytes) -> bool:
+    def commit_change(self, author: dict, message: str, branch: str, path: str, content: bytes) -> bool:
         committer = InputGitAuthor(author[RepositoryInterface.COMMITTER_NAME_KEY], author[RepositoryInterface.COMMITTER_EMAIL_KEY])
 
         if any(branch == repo_branch.name for repo_branch in self.pyGithubRepo.get_branches()):
