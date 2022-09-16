@@ -48,7 +48,7 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def get_owner(self) -> str:
-        """Gets owner of the name of the owner of the repository"""
+        """Gets the name of the owner of the repository"""
         raise NotImplementedError
 
     @abc.abstractmethod

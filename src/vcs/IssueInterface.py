@@ -10,8 +10,8 @@ class IssueInterface(metaclass=abc.ABCMeta):
                 callable(subclass.get_title) and
                 hasattr(subclass, 'get_body') and
                 callable(subclass.get_body) and
-                hasattr(subclass, 'get_state') and
-                callable(subclass.get_state) or
+                hasattr(subclass, 'is_open') and
+                callable(subclass.is_open) or
                 NotImplemented)
 
     @abc.abstractmethod
@@ -27,5 +27,5 @@ class IssueInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_state(self) -> str:
+    def is_open(self) -> bool:
         raise NotImplementedError

@@ -25,12 +25,12 @@ class IssueOrchestrator:
         
         issues = self.vcs_hub.get_issues(self.repo, issue_text_content[self.ISSUE_CONTENT_TITLE_KEY])
         if issues is None:
-            print("Unable retreive issues")
+            print("Unable to retrieve issues")
             return
 
         for issue in issues:
             if issue_text_content[self.ISSUE_CONTENT_TITLE_KEY] == issue.get_title() and issue_text_content[self.ISSUE_CONTENT_BODY_KEY] == issue.get_body():
-                if "open" == issue.get_state():
+                if issue.is_open():
                     print("The issue has already been opened, view it here:\n" + issue.get_url())
                     return
                 else:
