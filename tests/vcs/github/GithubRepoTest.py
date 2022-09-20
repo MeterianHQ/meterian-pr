@@ -18,13 +18,17 @@ from src.vcs.RepositoryInterface import RepositoryInterface
 from src.vcs.github.GithubRepo import GithubRepo
 from typing import List
 from src.vcs.PullRequestInterface import PullRequestInterface
+from src.vcs.CommitAuthor import CommitAuthor
 
 class GithubRepoTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.pyGithubRepo = Mock(spec=PyGithubRepository)
         self.githubRepo = GithubRepo(self.pyGithubRepo)
-        self.author = {"username": "foo", "email": "foo@baz.com"}
+        self.author = CommitAuthor(
+            "foo",
+            "foo@baz.com"
+        )
 
     def test_should_get_repo_owner(self):
         self.pyGithubRepo.organization = Mock(spec=Organization)
@@ -279,10 +283,10 @@ class GithubRepoTest(unittest.TestCase):
 
         return mock_branches
 
-    def __as_committer(self, author_data: dict) -> InputGitAuthor:
+    def __as_committer(self, author_data: CommitAuthor) -> InputGitAuthor:
         return InputGitAuthor(
-            author_data["username"],
-            author_data["email"]
+            author_data.username,
+            author_data.email
         )
 
 if __name__ == "__main__":

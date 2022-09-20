@@ -3,6 +3,7 @@ import logging
 from .PullRequestInterface import PullRequestInterface
 from .RepositoryInterface import RepositoryInterface
 from .BranchHelper import BranchHelper
+from .CommitAuthor import CommitAuthor
 from pathlib import Path
 
 class PrOrchestrator:
@@ -14,7 +15,7 @@ class PrOrchestrator:
 
     __log = logging.getLogger("PrOrchestrator")
 
-    def __init__(self, workdir:Path, repository: RepositoryInterface, author: dict):
+    def __init__(self, workdir:Path, repository: RepositoryInterface, author: CommitAuthor):
         self.workdir = workdir
         self.repo = repository
         self.branch_helper = BranchHelper()

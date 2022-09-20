@@ -7,9 +7,9 @@ from src.vcs.gitlab.GitlabIssue import GitlabIssue
 from gitlab import Gitlab as PyGitlab
 from gitlab import GitlabHttpError
 from gitlab.v4.objects.projects import ProjectManager
-from gitlab.v4.objects.projects import Project
 from gitlab.v4.objects.issues import IssueManager
 from gitlab.v4.objects.issues import Issue
+from tests.vcs.gitlab.GitlabTestFunctions import GitlabTestFunctions
 
 class GitlabTest(unittest.TestCase):
 
@@ -72,11 +72,7 @@ class GitlabTest(unittest.TestCase):
         return issue
 
     def __create_project(self, name: str):
-        tokens = name.rsplit('/', 1)
-        project = Mock(spec=Project)
-        project.namespace = { 'path': tokens[0]}
-        project.name = tokens[1]
-        return project
+        return GitlabTestFunctions.create_project(name)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from github.GithubException import UnknownObjectException
 from github.Label import Label
 from github.Repository import Repository as PyGithubRepository
 from github.InputGitAuthor import InputGitAuthor
+from src.vcs.CommitAuthor import CommitAuthor
 from .GithubIssue import GithubIssue
 from ..PullRequestInterface import PullRequestInterface
 from ..RepositoryInterface import RepositoryInterface
@@ -18,10 +19,10 @@ from github import GithubObject
 
 class GithubRepo(RepositoryInterface):
 
-    DEFAULT_COMMITTER_DATA = {
-        RepositoryInterface.COMMITTER_NAME_KEY: "meterian-bot",
-        RepositoryInterface.COMMITTER_EMAIL_KEY: "bot.github@meterian.io"
-    }
+    DEFAULT_COMMITTER = CommitAuthor(
+        "meterian-bot",
+        "bot.github@meterian.io"
+    )
 
     __log = logging.getLogger("GithubRepo")
 
@@ -70,8 +71,8 @@ class GithubRepo(RepositoryInterface):
             self.__log.debug("Unexpected exception caught while dealing with branch creation", exc_info=1)
             return False
 
-    def commit_change(self, author: dict, message: str, branch: str, path: str, content: bytes) -> bool:
-        committer = InputGitAuthor(author[RepositoryInterface.COMMITTER_NAME_KEY], author[RepositoryInterface.COMMITTER_EMAIL_KEY])
+    def commit_change(self, author: CommitAuthor, message: str, branch: str, path: str, content: bytes) -> bool:
+        committer = InputGitAuthor(author.getUsername(), author.getEmail())
 
         if any(branch == repo_branch.name for repo_branch in self.pyGithubRepo.get_branches()):
             try:

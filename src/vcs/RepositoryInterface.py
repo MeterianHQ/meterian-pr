@@ -3,6 +3,7 @@ import abc
 from typing import List
 from .IssueInterface import IssueInterface
 from .PullRequestInterface import PullRequestInterface
+from .CommitAuthor import CommitAuthor
 
 class RepositoryInterface(metaclass=abc.ABCMeta):
 
@@ -11,9 +12,6 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
     METERIAN_BOT_ISSUE_LABEL_DESCRIPTION = "Issue opened to highlight outdated dependencies found by Meterian's analysis"
     METERIAN_BOT_PR_LABEL_NAME = "meterian-bot-pr"
     METERIAN_BOT_PR_LABEL_DESCRIPTION = "Pull requests that update dependency files based on Meterian's analysis"
-
-    COMMITTER_NAME_KEY = "username"
-    COMMITTER_EMAIL_KEY = "email"
 
     @classmethod
     def __subclasshook__(cls, subclass):
@@ -72,7 +70,7 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def commit_change(self, author: dict, message: str, branch: str, path: str, content: bytes) -> bool:
+    def commit_change(self, author: CommitAuthor, message: str, branch: str, path: str, content: bytes) -> bool:
         """Commits change to file on a branch"""
         raise NotImplementedError
 

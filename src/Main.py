@@ -18,7 +18,7 @@ from pathlib import Path
 VCS_PLATFORMS = [ "github" ] #, "bitbucket" ]
 
 DEFAULT_AUTHORS_BY_PLATFORM = {
-    "github": GithubRepo.DEFAULT_COMMITTER_DATA
+    "github": GithubRepo.DEFAULT_COMMITTER
     # ,"bitbucket": BitbucketRepo.DEFAULT_COMMITTER_DATA
 }
 
