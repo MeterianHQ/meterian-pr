@@ -1,15 +1,13 @@
 import logging
 
 class BranchHelper:
-    
-    PR_BRANCH_NAME_PREFIX = "meterian-bot/autofix/"
 
-    log = logging.getLogger("BranchHelper")
+    __log = logging.getLogger("BranchHelper")
 
     def to_branch_ref(self, branch_name: str) -> str:
         ref = self.__sanitize_github_ref(branch_name)
         if ref == "refs/heads/" or ref == "refs/heads/@":
-            self.log.warn("Invalid ref %s was generated", ref)
+            self.__log.warn("Invalid ref %s was generated", ref)
             return None
         else:
             return "refs/heads/" + ref

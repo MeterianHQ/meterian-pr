@@ -8,7 +8,7 @@ class GitlabIssue(IssueInterface):
         self.title = self.pyGitlabIssue.title
         self.body = self.pyGitlabIssue.description
         self.url = self.pyGitlabIssue.web_url
-        self.is_open = True if self.pyGitlabIssue == "open" else False
+        self.open = False if self.pyGitlabIssue == "closed" else True
 
     def get_url(self) -> str:
         return self.url
@@ -19,8 +19,8 @@ class GitlabIssue(IssueInterface):
     def get_body(self) -> str:
         return self.body
 
-    def is_open(self) -> str:
-        return self.is_open
+    def is_open(self) -> bool:
+        return self.open
 
     def __str__(self):
         return "GitlabIssue [ title=" + self.title + ", url=" + self.url + ", is_open=" + str(self.is_open) + ", body=" + self.body + " ]"

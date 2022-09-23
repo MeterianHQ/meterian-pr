@@ -1,6 +1,6 @@
 import logging
-from src.vcs.gitlab.GitlabIssue import GitlabIssue
-from src.vcs.gitlab.GitlabProject import GitlabProject
+from .GitlabIssue import GitlabIssue
+from .GitlabProject import GitlabProject
 from ..VcsHubInterface import VcsHubInterface
 from ..RepositoryInterface import RepositoryInterface
 from ..IssueInterface import IssueInterface

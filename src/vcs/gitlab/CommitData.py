@@ -17,7 +17,7 @@ class CommitData:
         self.base64_file_content = CommitData.to_base64(file_content)
 
     # https://docs.gitlab.com/ee/api/commits.html#create-a-commit-with-multiple-files-and-actions
-    def to_payload(self):
+    def to_payload(self) -> dict:
         return {
             "author_name": self.author.getUsername(),
             "author_email": self.author.getEmail(),

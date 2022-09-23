@@ -16,9 +16,9 @@ from github.Repository import Repository as PyGithubRepository
 from github.Branch import Branch
 from src.vcs.RepositoryInterface import RepositoryInterface
 from src.vcs.github.GithubRepo import GithubRepo
-from typing import List
 from src.vcs.PullRequestInterface import PullRequestInterface
 from src.vcs.CommitAuthor import CommitAuthor
+from src.vcs.LabelData import LabelData
 
 class GithubRepoTest(unittest.TestCase):
 
@@ -50,7 +50,7 @@ class GithubRepoTest(unittest.TestCase):
         self.pyGithubRepo.get_branch = MagicMock(return_value=base_branch)
         self.pyGithubRepo.get_branches = MagicMock(return_value=[base_branch])
 
-        result = self.githubRepo.create_branch("master", "refs/heads/new-branch-name")
+        result = self.githubRepo.create_branch("master", "new-branch-name")
 
         self.pyGithubRepo.get_branch.assert_called_once_with("master")
         self.pyGithubRepo.create_git_ref.assert_called_once_with(ref="refs/heads/new-branch-name", sha="commit-sha")
@@ -61,7 +61,7 @@ class GithubRepoTest(unittest.TestCase):
         base_branch.name = "new-branch-name"
         self.pyGithubRepo.get_branches = MagicMock(return_value=[base_branch])
 
-        result = self.githubRepo.create_branch("base-branch-name", "refs/heads/new-branch-name")
+        result = self.githubRepo.create_branch("base-branch-name", "new-branch-name")
 
         self.pyGithubRepo.get_branches.assert_called_once()
         self.assertTrue(result)
@@ -73,7 +73,7 @@ class GithubRepoTest(unittest.TestCase):
         self.pyGithubRepo.get_branch = MagicMock(return_value=base_branch)
         self.pyGithubRepo.get_branches = MagicMock(return_value=[base_branch])
 
-        result = self.githubRepo.create_branch("master", "refs/heads/new-branch-name")
+        result = self.githubRepo.create_branch("master", "new-branch-name")
 
         self.pyGithubRepo.get_branch.assert_called_once_with("master")
         self.pyGithubRepo.create_git_ref.assert_called_once_with(ref="refs/heads/new-branch-name", sha="commit-sha")
@@ -174,41 +174,64 @@ class GithubRepoTest(unittest.TestCase):
         self.assertEqual(self.__as_committer(self.author)._InputGitAuthor__email, kwargs["committer"]._InputGitAuthor__email)
         self.assertTrue(result)
 
+    def test_should_create_label_when_it_does_not_exist(self):
+        self.pyGithubRepo.get_label = MagicMock(side_effect=UnknownObjectException(404, {"message": "Label Not Found"}, None))
+
+        self.assertTrue(self.githubRepo.create_label("name", "description", "color", "text_color"))
+
+        self.pyGithubRepo.create_label.assert_called_once_with("name", "color", "description")
+
+    def test_should_not_create_label_when_it_already_exists(self):
+        label = self.__create_label(LabelData("name", "description", "color", None))
+        self.pyGithubRepo.get_label = MagicMock(return_value=label)
+
+        self.assertTrue(self.githubRepo.create_label("name", "description", "color", None))
+
+        self.pyGithubRepo.get_label.assert_called_once_with("name")
+
+    def test_should_not_create_label_when_exception_thrown(self):
+        self.pyGithubRepo.get_label = MagicMock(side_effect=UnknownObjectException(404, {"message": "Label Not Found"}, None))
+        self.pyGithubRepo.create_label = MagicMock(side_effect=UnknownObjectException(500, {"message": "Error"}, None))
+
+        self.assertFalse(self.githubRepo.create_label("name", "description", "color", None))
+
+    def __create_label(self, label: LabelData):
+        alabel = Mock(spec=Label)
+        alabel.name = label.name
+        alabel.color = label.color
+        alabel.description = label.description
+        return alabel
+
 # Pull request creation tests
 
     def test_should_create_pull_request(self):
-        label = Mock(spec=Label)
-        label.name = "meterian-bot-pr"
+        label = self.__create_label(LabelData("my-label-name", "description", "color", None))
         pull = Mock(spec=PullRequest)
-        pull.get_labels = MagicMock(return_value=[Mock(spec=Label)])
+        pull.get_labels = MagicMock(return_value=[])
         self.pyGithubRepo.create_pull = MagicMock(return_value=pull)
         self.pyGithubRepo.get_label = MagicMock(return_value=label)
 
-        pr = self.githubRepo.create_pull_request("title", "body text", "head", "base")
+        pr = self.githubRepo.create_pull_request("title", "body text", "head", "base", ["my-label-name"])
 
         self.pyGithubRepo.create_pull.assert_called_once_with(title="title", body="body text", head="head", base="base")
         pull.add_to_labels.assert_called_once_with(ANY)
         args = pull.add_to_labels.call_args[0]
-        self.assertEqual(RepositoryInterface.METERIAN_BOT_PR_LABEL_NAME, args[0].name)
+        self.assertEqual("my-label-name", args[0].name)
         self.assertTrue(isinstance(pr, PullRequestInterface))
     
-    def test_should_create_pull_request_without_adding_meterian_label_when_label_cannot_be_retrieved(self):
-        label = Mock(spec=Label)
-        label.name = "meterian-bot-pr"
+    def test_should_create_unlabelled_pull_request_when_no_label_provided(self):
         pull = Mock(spec=PullRequest)
         pull.get_labels = MagicMock(return_value=[Mock(spec=Label)])
         self.pyGithubRepo.create_pull = MagicMock(return_value=pull)
-        self.pyGithubRepo.get_label = MagicMock(side_effect=GithubException(500, {"message": "Error"}, None))
 
-        pr = self.githubRepo.create_pull_request("title", "body text", "head", "base")
+        pr = self.githubRepo.create_pull_request("title", "body text", "head", "base", [])
 
         self.pyGithubRepo.create_pull.assert_called_once_with(title="title", body="body text", head="head", base="base")
         pull.add_to_labels.assert_not_called()
         self.assertTrue(isinstance(pr, PullRequestInterface))
 
     def test_should_create_pull_request_without_adding_meterian_label_when_pr_is_already_labelled(self):
-        label = Mock(spec=Label)
-        label.name = "meterian-bot-pr"
+        label = self.__create_label(LabelData("my-label-name", "description", "color", None))
         pull = Mock(spec=PullRequest)
         pull.get_labels = MagicMock(return_value=[label])
         self.pyGithubRepo.create_pull = MagicMock(return_value=pull)
@@ -216,7 +239,7 @@ class GithubRepoTest(unittest.TestCase):
 
         print("The labels" + str(pull.get_labels()))
 
-        pr = self.githubRepo.create_pull_request("title", "body text", "head", "base")
+        pr = self.githubRepo.create_pull_request("title", "body text", "head", "base", ["my-label-name"])
 
         self.pyGithubRepo.create_pull.assert_called_once_with(title="title", body="body text", head="head", base="base")
         pull.get_labels.assert_called()
@@ -235,34 +258,26 @@ class GithubRepoTest(unittest.TestCase):
 # Issue creation tests
 
     def test_should_not_open_issue_when_GithubException_caught(self):
-        label = Mock(spec=Label)
-        label.name = "meterian-bot-issue"
-        label.color = "2883fa"
+        label = self.__create_label(LabelData("my-label-name", "description", "color", None))
         self.pyGithubRepo.get_label = MagicMock(return_value=label)
 
         self.pyGithubRepo.create_issue = MagicMock(side_effect=GithubException(500, {"message": "Error"}, None))
         self.assertIsNone(self.githubRepo.create_issue("title", "body"))
 
-    def test_should_open_labelled_issue_when_meterian_label_can_be_retrieved(self):
-        label = Mock(spec=Label)
-        label.name = "meterian-bot-issue"
-        label.color = "2883fa"
+    def test_should_open_labelled_issue(self):
+        label = self.__create_label(LabelData("my-label-name", "description", "color", None))
         self.pyGithubRepo.get_label = MagicMock(return_value=label)
 
-        self.githubRepo.create_issue("title", "body")
+        self.githubRepo.create_issue("title", "body", ["my-label-name"])
 
         self.pyGithubRepo.create_issue.assert_called_once_with(title="title", body="body", labels=[ANY])
         kwargs = self.pyGithubRepo.create_issue.call_args[1]
         labels = kwargs["labels"]
-        self.assertEqual(1, len(labels), "Expected the usage of only one label")
-        self.assertEqual(RepositoryInterface.METERIAN_BOT_ISSUE_LABEL_NAME, labels[0].name)
-        self.assertEqual(RepositoryInterface.METERIAN_LABEL_COLOR, labels[0].color)
+        self.assertEqual("my-label-name", labels[0].name)
+        self.assertEqual("color", labels[0].color)
 
-    def test_should_open_unlabelled_issue_when_meterian_label_cannot_be_retrieved(self):
-        self.pyGithubRepo.get_label = MagicMock(side_effect=GithubException(500, {"message": "Error"}, None))
-
+    def test_should_open_unlabelled_issue_when_no_labels_provided(self):
         self.githubRepo.create_issue("title", "body")
-
         self.pyGithubRepo.create_issue.assert_called_once_with(title="title", body="body", labels=GithubObject.NotSet)
 
     
