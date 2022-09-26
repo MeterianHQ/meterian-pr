@@ -3,15 +3,17 @@ name: Main workflow
 on: push
 
 jobs:
-  default_routine:
-    name: Default routine
+  test_routine:
+    name: Test routine
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
       - name: Run all tests
-        run: python3 -m unittest discover -s tests/ -p '*Test.py'
+        run: |
+             pipenv install
+             pipenv run python3 -m unittest discover -s tests/ -p '*Test.py'
 
       # - name: Vulnerability scan
       #   uses: MeterianHQ/meterian-github-action@v1.0.10
@@ -20,6 +22,7 @@ jobs:
 
   release_draft:
     if: github.ref_name == 'main'
+    needs: test_routine
     name: Release draft
     runs-on: ubuntu-latest
     steps:
