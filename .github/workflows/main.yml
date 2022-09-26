@@ -2,18 +2,20 @@ name: Main workflow
 
 on: push
 
+env:
+  GITHUB_TOKEN: ${{ github.token }}
+
 jobs:
   test_routine:
     name: Test routine
     runs-on: ubuntu-latest
-    container:
-      image: cimg/python:3.8.10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
       - name: Run all tests
         run: |
+             pip3 install pipenv
              pipenv install
              pipenv run python3 -m unittest discover -s tests/ -p '*Test.py'
 
@@ -37,8 +39,6 @@ jobs:
              pyinstaller --paths=src --name=meterian-pr --onefile src/Main.py
 
       - name: Draft release
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
              VERSION=$(./dist/meterian-pr --version)
              gh release create $VERSION --generate-notes --draft dist/meterian-pr
