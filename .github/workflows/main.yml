@@ -35,7 +35,7 @@ jobs:
 
       - name: Build binary
         run: |
-             pip3 install pyinstaller==4.8
+             pip3 install pipenv pyinstaller==4.8
              pipenv install
              pipenv run pyinstaller --paths=src --name=meterian-pr --onefile src/Main.py
 
