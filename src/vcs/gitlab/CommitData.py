@@ -1,6 +1,5 @@
 import base64
 
-from typing_extensions import Self
 from ..CommitAuthor import CommitAuthor
 
 class CommitData:
@@ -33,10 +32,10 @@ class CommitData:
             ]
         }
 
-    def update_commit_data(author: CommitAuthor, message: str, branch: str, file_path: str, file_content: str) -> Self:
+    def update_commit_data(author: CommitAuthor, message: str, branch: str, file_path: str, file_content: str):
         return CommitData(author, message, branch, CommitData.__COMMIT_UPDATE_ACTION_KEY, file_path, file_content)
 
-    def create_commit_data(author: CommitAuthor, message: str, branch: str, file_path: str, file_content: str) -> Self:
+    def create_commit_data(author: CommitAuthor, message: str, branch: str, file_path: str, file_content: str):
         return CommitData(author, message, branch, CommitData.__COMMIT_CREATE_ACTION_KEY, file_path, file_content)
 
     def to_base64(content: bytes) -> bytes:

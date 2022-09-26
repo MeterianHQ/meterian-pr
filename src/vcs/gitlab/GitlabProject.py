@@ -48,7 +48,7 @@ class GitlabProject(RepositoryInterface):
         if hasattr(pyGitlabProject, "owner"):
             self.owner = self.__getOrDefault(self.pyGitlabProject.owner, 'username', None)
         else:
-            self.__log.warn("Ownership information inaccessible, attribute owner will be set to empty")
+            self.__log.debug("Ownership information inaccessible, attribute owner will be set to empty")
             self.owner = ""
 
     def get_full_name(self) -> str:
