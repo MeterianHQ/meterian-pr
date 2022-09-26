@@ -6,6 +6,8 @@ jobs:
   test_routine:
     name: Test routine
     runs-on: ubuntu-latest
+    container:
+      image: cimg/python:3.8.10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
