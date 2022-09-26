@@ -134,6 +134,8 @@ if __name__ ==  "__main__":
         sys.stderr.write("Work directory %s does not exist\n" % WORK_DIR)
         sys.stderr.write("\n")
         sys.exit(-1)
+    else:
+        WORK_DIR = str(os.path.abspath(WORK_DIR))
 
     if args.vcs not in VCS_PLATFORMS:
         sys.stderr.write("Invalid version control system: %s\n" % args.vcshub)
@@ -172,12 +174,12 @@ if __name__ ==  "__main__":
                     sys.stderr.write("\n")
                     sys.exit(-1)
                 else:
-                    if WORK_DIR in Path(meterian_pdf_report_path).parents:
+                    if Path(WORK_DIR) in Path(meterian_pdf_report_path).parents:
                         log.debug("Specified PDF report %s relative to project dir %s", meterian_pdf_report_path, str(WORK_DIR))
-                        meterian_pdf_report_path = Path(meterian_pdf_report_path).relative_to(WORK_DIR)
+                        meterian_pdf_report_path = str(Path(meterian_pdf_report_path).relative_to(WORK_DIR))
                         log.debug("Will use relative path of PDF report %s", meterian_pdf_report_path)
                     else:
-                        log.warning("PDF report %s will be ignored as it's not relative to project %s", meterian_pdf_report_path, str(WORK_DIR))
+                        log.warning("PDF report %s will be ignored as it's not relative to project in directory %s", meterian_pdf_report_path, str(WORK_DIR))
             elif args.action == "ISSUE":
                 log.warning("Unsupported option '--with-pdf-report' being used with action 'ISSUE, it will be ignored")
 

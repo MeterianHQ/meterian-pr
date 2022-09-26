@@ -75,6 +75,7 @@ class GithubRepo(RepositoryInterface):
 
         if any(branch == repo_branch.name for repo_branch in self.pyGithubRepo.get_branches()):
             try:
+                self.__log.debug("Attempting to get contents for file %s on branch %s of repo %s", path, branch, self.get_full_name())
                 remote_content = self.pyGithubRepo.get_contents(path, ref=branch)
             except UnknownObjectException as ex:
                 if "404" in str(ex) or "not found" in str(ex).lower():
