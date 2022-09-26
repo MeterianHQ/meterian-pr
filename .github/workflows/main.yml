@@ -37,7 +37,7 @@ jobs:
         run: |
              pip3 install -r requirements.txt
              pip3 install pyinstaller==4.8
-             pipenv run pyinstaller --paths=src --name=meterian-pr --onefile src/Main.py
+             pyinstaller --paths=src --name=meterian-pr --onefile src/Main.py
 
       - name: Draft release
         run: |
