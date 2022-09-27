@@ -14,6 +14,7 @@ from vcs.github.GithubRepo import GithubRepo
 from vcs.gitlab.GitlabProject import GitlabProject
 from vcs.PullRequestSubmitter import PullRequestSubmitter
 from gitbot.GitbotMessageGenerator import GitbotMessageGenerator
+from vcs.CommitAuthor import CommitAuthor
 from pathlib import Path
 
 VCS_PLATFORMS = [ "github", "gitlab" ] #, "bitbucket" ]
@@ -85,6 +86,18 @@ def parse_args():
         version=VERSION
     )
 
+    parser.add_argument(
+        "--commit-author-username",
+        metavar="USERNAME",
+        help="Allows to specify a different commit author username to use (by default the Meterian bot username is used)"
+    )
+
+    parser.add_argument(
+        "--commit-author-email",
+        metavar="EMAIL",
+        help="Allows to specify a different commit author email address to use (by default the Meterian bot email address is used)"
+    )
+
     return parser.parse_args()
 
 def initLogging(args):
@@ -124,6 +137,18 @@ def generate_contribution_content(gitbot: GitbotMessageGenerator, meterian_json_
     content = gitbot.genMessage(meterian_json_report, options)
     return content
 
+def get_commit_author_details(args):
+    username = DEFAULT_AUTHORS_BY_PLATFORM[args.vcs].username
+    email = DEFAULT_AUTHORS_BY_PLATFORM[args.vcs].email
+
+    if args.commit_author_username:
+        username = args.commit_author_username
+    if args.commit_author_email:
+        email = args.commit_author_email
+
+    author = CommitAuthor(username, email)
+    log.info("Commit author to be employed is: %s", author)
+    return author
 
 if __name__ ==  "__main__":
     print()
@@ -227,7 +252,7 @@ if __name__ ==  "__main__":
                 print("No changes were made in your repository therefore no pull request will be opened")
                 sys.exit(0)
 
-        author = DEFAULT_AUTHORS_BY_PLATFORM[args.vcs]
+        author = get_commit_author_details(args)
         pr_submitter = PullRequestSubmitter(WORK_DIR, remote_repo, author)
 
         pr_text_content = generate_contribution_content(gitbot_msg_generator, meterian_json_report, {
