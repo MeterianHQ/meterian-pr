@@ -24,7 +24,7 @@ class Github(VcsHubInterface):
             repo = self.pyGithub.get_repo(name)
             return GithubRepo(repo)
         except UnknownObjectException:
-            self.__log.error("Repo %s was not found \n%s", name, exc_info=1)
+            self.__log.error("Repo %s was not found", name, exc_info=1)
             return None
     
     def get_issues(self, repository: RepositoryInterface, title: str) -> List[IssueInterface]:

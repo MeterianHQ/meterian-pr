@@ -15,5 +15,5 @@ class GithubIssue(IssueInterface):
     def get_body(self) -> str:
         return self.pyGithubIssue.body
 
-    def get_state(self) -> str:
-        return self.pyGithubIssue.state
+    def is_open(self) -> bool:
+        return False if self.pyGithubIssue.state == "closed" else True

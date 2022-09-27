@@ -7,6 +7,7 @@ from github.GithubException import UnknownObjectException
 from github.Label import Label
 from github.Repository import Repository as PyGithubRepository
 from github.InputGitAuthor import InputGitAuthor
+from ..CommitAuthor import CommitAuthor
 from .GithubIssue import GithubIssue
 from ..PullRequestInterface import PullRequestInterface
 from ..RepositoryInterface import RepositoryInterface
@@ -15,13 +16,28 @@ from .GithubPullRequest import GithubPullRequest
 from ..BranchHelper import BranchHelper
 from typing import List
 from github import GithubObject
+from ..LabelData import LabelData
 
 class GithubRepo(RepositoryInterface):
 
-    DEFAULT_COMMITTER_DATA = {
-        RepositoryInterface.COMMITTER_NAME_KEY: "meterian-bot",
-        RepositoryInterface.COMMITTER_EMAIL_KEY: "bot.github@meterian.io"
-    }
+    DEFAULT_COMMITTER = CommitAuthor(
+        "meterian-bot",
+        "bot.github@meterian.io"
+    )
+
+    PR_LABEL = LabelData(
+        RepositoryInterface.METERIAN_BOT_PR_LABEL_NAME,
+        RepositoryInterface.METERIAN_BOT_PR_LABEL_DESCRIPTION,
+        RepositoryInterface.METERIAN_LABEL_COLOR,
+        RepositoryInterface.METERIAN_LABEL_TEXT_COLOR
+    )
+
+    ISSUE_LABEL = LabelData(
+        RepositoryInterface.METERIAN_BOT_ISSUE_LABEL_NAME,
+        RepositoryInterface.METERIAN_BOT_ISSUE_LABEL_DESCRIPTION,
+        RepositoryInterface.METERIAN_LABEL_COLOR,
+        RepositoryInterface.METERIAN_LABEL_TEXT_COLOR
+    )
 
     __log = logging.getLogger("GithubRepo")
 
@@ -56,22 +72,22 @@ class GithubRepo(RepositoryInterface):
     def has_issues_enabled(self) -> bool:
         return self.pyGithubRepo.has_issues
 
-    def create_branch(self, base_branch_name: str, ref_name: str) -> bool:
+    def create_branch(self, parent_branch_name: str, new_branch_name: str) -> bool:
         try:
-            if any(self.branch_helper.as_branch_name(ref_name) == repo_branch.name for repo_branch in self.pyGithubRepo.get_branches()):
-                self.__log.debug("Branch %s already exists it will not be created", self.branch_helper.as_branch_name(ref_name))
+            if any(new_branch_name == repo_branch.name for repo_branch in self.pyGithubRepo.get_branches()):
+                self.__log.debug("Branch %s already exists, it will not be created", new_branch_name)
                 return True
 
-            source_branch = self.pyGithubRepo.get_branch(base_branch_name)
-            self.pyGithubRepo.create_git_ref(ref=ref_name, sha=source_branch.commit.sha)
-            self.__log.debug("Created new branch %s", self.branch_helper.as_branch_name(ref_name))
+            source_branch = self.pyGithubRepo.get_branch(parent_branch_name)
+            self.pyGithubRepo.create_git_ref(ref=self.branch_helper.as_branch_ref(new_branch_name), sha=source_branch.commit.sha)
+            self.__log.debug("Created new branch %s", new_branch_name)
             return True
         except GithubException:
             self.__log.debug("Unexpected exception caught while dealing with branch creation", exc_info=1)
             return False
 
-    def commit_change(self, author: map, message: str, branch: str, path: str, content: bytes) -> bool:
-        committer = InputGitAuthor(author[RepositoryInterface.COMMITTER_NAME_KEY], author[RepositoryInterface.COMMITTER_EMAIL_KEY])
+    def commit_change(self, author: CommitAuthor, message: str, branch: str, path: str, content: bytes) -> bool:
+        committer = InputGitAuthor(author.getUsername(), author.getEmail())
 
         if any(branch == repo_branch.name for repo_branch in self.pyGithubRepo.get_branches()):
             try:
@@ -107,18 +123,18 @@ class GithubRepo(RepositoryInterface):
             self.__log.warning("Branch %s was not found, no commit will be made at this stage", branch)
             return False
 
-    def create_pull_request(self, title: str, body: str, head: str, base: str) -> PullRequestInterface:
+    def create_pull_request(self, title: str, body: str, head: str, base: str, labels: List[str] = []) -> PullRequestInterface:
         try:
             pr = self.pyGithubRepo.create_pull(title=title, body=body, head=head, base=base)
 
-            meterian_pr_label = self.__get_label(self.METERIAN_BOT_PR_LABEL_NAME, self.METERIAN_LABEL_COLOR, self.METERIAN_BOT_PR_LABEL_DESCRIPTION)
-            if (meterian_pr_label is not None):
-                if meterian_pr_label not in pr.get_labels():
-                    pr.add_to_labels(meterian_pr_label)
-                else:
-                    self.__log.debug("Label was already found on PR?")
+            if len(labels) != 0:
+                for alabel in labels:
+                    new_label = self.__get_label(alabel)
+                    current_labels = pr.get_labels()
+                    if not any(new_label.name == current_label.name for current_label in current_labels):
+                        pr.add_to_labels(new_label)
             else:
-                self.__log.warning("Could not retrieve Meterian PR label, PR will be unlabelled")
+                self.__log.debug("No labels provided, PR will be unlabelled")
 
             self.__log.debug("Created pull request %s", str(pr))
             return GithubPullRequest(pr)
@@ -132,16 +148,20 @@ class GithubRepo(RepositoryInterface):
     def get_closed_pulls(self, head: str = None, base: str = None) -> List[PullRequestInterface]:
         return self.__do_get_pulls("closed", head, base)
 
-    def create_issue(self, title: str, body: str) -> IssueInterface:
-        meterian_issue_label = self.__get_label(self.METERIAN_BOT_ISSUE_LABEL_NAME, self.METERIAN_LABEL_COLOR, self.METERIAN_BOT_ISSUE_LABEL_DESCRIPTION)
+    def create_issue(self, title: str, body: str, labels: List[str] = []) -> IssueInterface:
+        gh_labels = []
+        for label in labels:
+            gh_label = self.__get_label(label)
+            if gh_label is not None:
+                gh_labels.append(gh_label)
 
-        labels = [meterian_issue_label] if meterian_issue_label else GithubObject.NotSet
-        if labels == GithubObject.NotSet:
-            self.__log.warning("Could not retrieve/create Meterian issue label, the issue will be unlabelled")
+        if len(gh_labels)  == 0:
+            gh_labels = GithubObject.NotSet
+            self.__log.debug("The issue will be unlabelled, labels requested=%s, labels found=%s", str(labels), str(gh_labels))
 
         issue = None
         try:
-            issue = GithubIssue(self.pyGithubRepo.create_issue(title=title, body=body, labels=labels))
+            issue = GithubIssue(self.pyGithubRepo.create_issue(title=title, body=body, labels=gh_labels))
         except GithubException:
             self.__log.debug("Unexpected exception caught while creating issue '%s'", title, exc_info=1)
         return issue
@@ -158,16 +178,31 @@ class GithubRepo(RepositoryInterface):
 
         return the_list
 
-    def __get_label(self, name: str, color_if_not_found: str, description_if_not_found: str) -> Label:
+    def create_label(self, name: str, description: str, color: str, text_color: str) -> bool:
+        return True if self.__get_label_or_create_it(name, color, description) is not None else False
+
+    def get_pr_label(self) -> LabelData:
+        return self.PR_LABEL
+
+    def get_issue_label(self) -> LabelData:
+        return self.ISSUE_LABEL
+
+    def __get_label(self, name) -> Label :
+        try:
+            return self.pyGithubRepo.get_label(name)
+        except:
+            return None
+
+    def __get_label_or_create_it(self, name: str, color: str, description: str) -> Label:
         """
-        Gets a label given its name if it's exists or creates it of otherwise. None is returned if an unexpected exception is thrown.
+        Gets a label given its name if it exists or creates it otherwise. None is returned if an unexpected exception is thrown.
         """
         try:
             return self.pyGithubRepo.get_label(name)
         except UnknownObjectException:
             try:
                 self.__log.debug("Meterian pr label was not found, will be created")
-                return self.pyGithubRepo.create_label(name, color_if_not_found, description_if_not_found)
+                return self.pyGithubRepo.create_label(name, color, description)
             except GithubException:
                 pass
         except GithubException:

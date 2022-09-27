@@ -1,19 +1,20 @@
 import abc
 
 from typing import List
+
+from .LabelData import LabelData
 from .IssueInterface import IssueInterface
 from .PullRequestInterface import PullRequestInterface
+from .CommitAuthor import CommitAuthor
 
 class RepositoryInterface(metaclass=abc.ABCMeta):
 
     METERIAN_LABEL_COLOR = "2883fa"
+    METERIAN_LABEL_TEXT_COLOR = "ffffff"
     METERIAN_BOT_ISSUE_LABEL_NAME = "meterian-bot-issue"
     METERIAN_BOT_ISSUE_LABEL_DESCRIPTION = "Issue opened to highlight outdated dependencies found by Meterian's analysis"
     METERIAN_BOT_PR_LABEL_NAME = "meterian-bot-pr"
     METERIAN_BOT_PR_LABEL_DESCRIPTION = "Pull requests that update dependency files based on Meterian's analysis"
-
-    COMMITTER_NAME_KEY = "username"
-    COMMITTER_EMAIL_KEY = "email"
 
     @classmethod
     def __subclasshook__(cls, subclass):
@@ -31,6 +32,8 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
                 callable(subclass.create_branch) and
                 hasattr(subclass, 'commit_change') and
                 callable(subclass.commit_change) and
+                hasattr(subclass, 'create_label') and
+                callable(subclass.create_label) and
                 hasattr(subclass, 'create_pull_request') and
                 callable(subclass.create_pull_request) and
                 hasattr(subclass, 'get_open_pulls') and
@@ -38,7 +41,11 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
                 hasattr(subclass, 'get_closed_pulls') and
                 callable(subclass.get_closed_pulls) and
                 hasattr(subclass, 'create_issue') and
-                callable(subclass.create_issue) or
+                callable(subclass.create_issue) and
+                hasattr(subclass, 'get_pr_label') and
+                callable(subclass.get_pr_label) and
+                hasattr(subclass, 'get_issue_label') and
+                callable(subclass.get_issue_label) or
                 NotImplemented)
 
     @abc.abstractmethod
@@ -48,7 +55,7 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def get_owner(self) -> str:
-        """Gets owner of the name of the owner of the repository"""
+        """Gets the name of the owner of the repository"""
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -67,18 +74,27 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def create_branch(self, base_branch_name: str, ref_name: str) -> bool:
+    def create_branch(self, parent_branch_name: str, new_branch_name: str) -> bool:
         """Creates branch"""
         raise NotImplementedError
 
     @abc.abstractmethod
-    def commit_change(self, author: map, message: str, branch: str, path: str, content: bytes) -> bool:
+    def commit_change(self, author: CommitAuthor, message: str, branch: str, path: str, content: bytes) -> bool:
         """Commits change to file on a branch"""
         raise NotImplementedError
 
     @abc.abstractmethod
-    def create_pull_request(self, title: str, body: str, head: str, base: str) -> PullRequestInterface:
-        """Creates a pull request"""
+    def create_label(self, name: str, description: str, color: str, text_color: str) -> bool:
+        """Creates new label"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def create_pull_request(self, title: str, body: str, head: str, base: str, labels: List[str] = []) -> PullRequestInterface:
+        """
+        Creates a pull request with chosen labels.\n
+        Labels must pre-exist.\n
+        Use method `create_label` to create new labels
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -92,6 +108,20 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def create_issue(self, title: str, body: str) -> IssueInterface:
-        """Create an issue with given title and body content"""
+    def create_issue(self, title: str, body: str, labels: List[str] = []) -> IssueInterface:
+        """
+        Create an issue with given title, body content and labels.\n
+        Labels must pre-exist.\n
+        Use method `create_label` to create new labels
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_pr_label(self) -> LabelData:
+        """Gets main label data for labelling PRs"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_issue_label(self) -> LabelData:
+        """Gets main label data for labelling issues"""
         raise NotImplementedError

@@ -7,18 +7,21 @@ import http.client
 import os
 import shutil
 
-from vcs.IssueOrchestrator import IssueOrchestrator
+from vcs.IssueSubmitter import IssueSubmitter
 from vcs.GitCli import GitCli
 from vcs.VcsHubFactory import VcsHubFactory
 from vcs.github.GithubRepo import GithubRepo
-from vcs.PrOrchestrator import PrOrchestrator
+from vcs.gitlab.GitlabProject import GitlabProject
+from vcs.PullRequestSubmitter import PullRequestSubmitter
 from gitbot.GitbotMessageGenerator import GitbotMessageGenerator
+from vcs.CommitAuthor import CommitAuthor
 from pathlib import Path
 
-VCS_PLATFORMS = [ "github" ] #, "bitbucket" ]
+VCS_PLATFORMS = [ "github", "gitlab" ] #, "bitbucket" ]
 
 DEFAULT_AUTHORS_BY_PLATFORM = {
-    "github": GithubRepo.DEFAULT_COMMITTER_DATA
+    "github": GithubRepo.DEFAULT_COMMITTER,
+    "gitlab": GitlabProject.DEFAULT_COMMITTER
     # ,"bitbucket": BitbucketRepo.DEFAULT_COMMITTER_DATA
 }
 
@@ -26,7 +29,7 @@ ACTIONS = [ "PR", "ISSUE" ]
 
 WORK_DIR = None
 
-VERSION = "1.0.1"
+VERSION = "1.1.2"
 
 log = logging.getLogger("Main")
 
@@ -67,7 +70,7 @@ def parse_args():
         "--vcs",
         default="github",
         metavar="VCS",
-        help="The version control system where your repository is hosted\n (i.e. github) (default is github)"
+        help="The version control system where your repository is hosted\n (i.e. github) (default is github) (supported: " + str(VCS_PLATFORMS) + ")"
     )
 
     parser.add_argument(
@@ -81,6 +84,18 @@ def parse_args():
         action="version",
         help="Show version and exit",
         version=VERSION
+    )
+
+    parser.add_argument(
+        "--commit-author-username",
+        metavar="USERNAME",
+        help="Allows to specify a different commit author username to use (by default the Meterian bot username is used)"
+    )
+
+    parser.add_argument(
+        "--commit-author-email",
+        metavar="EMAIL",
+        help="Allows to specify a different commit author email address to use (by default the Meterian bot email address is used)"
     )
 
     return parser.parse_args()
@@ -122,6 +137,18 @@ def generate_contribution_content(gitbot: GitbotMessageGenerator, meterian_json_
     content = gitbot.genMessage(meterian_json_report, options)
     return content
 
+def get_commit_author_details(args):
+    username = DEFAULT_AUTHORS_BY_PLATFORM[args.vcs].username
+    email = DEFAULT_AUTHORS_BY_PLATFORM[args.vcs].email
+
+    if args.commit_author_username:
+        username = args.commit_author_username
+    if args.commit_author_email:
+        email = args.commit_author_email
+
+    author = CommitAuthor(username, email)
+    log.info("Commit author to be employed is: %s", author)
+    return author
 
 if __name__ ==  "__main__":
     print()
@@ -225,8 +252,8 @@ if __name__ ==  "__main__":
                 print("No changes were made in your repository therefore no pull request will be opened")
                 sys.exit(0)
 
-        author = DEFAULT_AUTHORS_BY_PLATFORM[args.vcs]
-        pr_orchestrator = PrOrchestrator(WORK_DIR, remote_repo, author)
+        author = get_commit_author_details(args)
+        pr_submitter = PullRequestSubmitter(WORK_DIR, remote_repo, author)
 
         pr_text_content = generate_contribution_content(gitbot_msg_generator, meterian_json_report, {
             GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
@@ -238,11 +265,11 @@ if __name__ ==  "__main__":
             sys.stderr.write("\n")
             sys.exit(-1)
     
-        pr_orchestrator.orchestarte(pr_text_content, changes, args.branch, meterian_pdf_report_path)
+        pr_submitter.submit(pr_text_content, changes, args.branch, meterian_pdf_report_path)
 
     
     if "ISSUE" == args.action:
-        issue_orchestrator = IssueOrchestrator(vcsPlatform, remote_repo)
+        issue_submitter = IssueSubmitter(vcsPlatform, remote_repo)
 
         issue_text_content = generate_contribution_content(gitbot_msg_generator, meterian_json_report, {
             GitbotMessageGenerator.ISSUE_OPT_KEY: True,
@@ -254,7 +281,7 @@ if __name__ ==  "__main__":
             sys.stderr.write("\n")
             sys.exit(-1)
 
-        issue_orchestrator.orchestrate(issue_text_content)
+        issue_submitter.submit(issue_text_content)
 
 
 
