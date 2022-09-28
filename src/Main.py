@@ -29,7 +29,7 @@ ACTIONS = [ "PR", "ISSUE" ]
 
 WORK_DIR = None
 
-VERSION = "1.1.2"
+VERSION = "1.1.3"
 
 log = logging.getLogger("Main")
 
@@ -58,14 +58,6 @@ def parse_args():
     parser.add_argument("branch", help="The name of the current branch (must be a branch available remotely)")
 
     parser.add_argument(
-        "-l",
-        "--log",
-        default="warning",
-        metavar="LOGLEVEL",
-        help="Sets the logging level (default is warning)"
-    )
-
-    parser.add_argument(
         "-v",
         "--vcs",
         default="github",
@@ -80,13 +72,6 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--version",
-        action="version",
-        help="Show version and exit",
-        version=VERSION
-    )
-
-    parser.add_argument(
         "--commit-author-username",
         metavar="USERNAME",
         help="Allows to specify a different commit author username to use (by default the Meterian bot username is used)"
@@ -96,6 +81,21 @@ def parse_args():
         "--commit-author-email",
         metavar="EMAIL",
         help="Allows to specify a different commit author email address to use (by default the Meterian bot email address is used)"
+    )
+
+    parser.add_argument(
+        "-l",
+        "--log",
+        default="warning",
+        metavar="LOGLEVEL",
+        help="Sets the logging level (default is warning)"
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show version and exit",
+        version=VERSION
     )
 
     return parser.parse_args()
