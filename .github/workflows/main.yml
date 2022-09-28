@@ -107,8 +107,8 @@ jobs:
              VERSION=$(cat /tmp/version.txt)
              gh release create $VERSION --generate-notes --draft /tmp/artifacts/linux-package/meterian-pr_linux.tar.gz /tmp/artifacts/alpine-linux-package/meterian-pr_alpine-linux.tar.gz
 
-      - name: Draft prerelease
+      - name: Draft pre-release
         if: github.ref_name != 'main'
         run: |
              VERSION="$(cat /tmp/version.txt)-canary"
-             gh release create $VERSION --generate-notes --prerelease --draft /tmp/artifacts/linux-package/meterian-pr_linux.tar.gz /tmp/artifacts/alpine-linux-package/meterian-pr_alpine-linux.tar.gz
+             gh release create $VERSION --generate-notes --target $GITHUB_REF_NAME --prerelease --draft /tmp/artifacts/linux-package/meterian-pr_linux.tar.gz /tmp/artifacts/alpine-linux-package/meterian-pr_alpine-linux.tar.gz
