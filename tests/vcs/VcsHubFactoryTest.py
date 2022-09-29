@@ -47,6 +47,18 @@ class VcsHubFactoryTest(unittest.TestCase):
 
         self.assertIsNone(self.factory.create())
 
+    def test_should_fail_to_create_instance_of_Github_when_invalid_token_is_used(self):
+        os.environ["GITHUB_TOKEN"] = "an_invalid_token"
+        self.factory = VcsHubFactory("github")
+
+        self.assertIsNone(self.factory.create())
+
+    def test_should_fail_to_create_instance_of_Gitlab_when_invalid_token_is_used(self):
+        os.environ["GITLAB_TOKEN"] = "an_invalid_token"
+        self.factory = VcsHubFactory("gitlab")
+
+        self.assertIsNone(self.factory.create())
+
     def __unset_env_var(self, name: str):
         if name in os.environ:
             del os.environ[name]

@@ -121,7 +121,8 @@ class PullRequestSubmitter:
             if body !=  pr.get_body():
                 the_body = body
 
-        pr.edit(title=the_title, body=the_body)
+        if the_body or the_title:
+            pr.edit(title=the_title, body=the_body)
 
     def __do_all_commits(self, commit_message: str, branch_name: str, local_changes: list, manifest_path: str, manifest_contents: bytes, pdf_report_path: str, pdf_report_contents: bytes) -> bool:
         were_changes_committed = self.repo.commit_change(self.author, commit_message, branch_name, manifest_path, manifest_contents)

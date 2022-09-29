@@ -59,7 +59,7 @@ class GitlabProjectTest(unittest.TestCase):
         self.assertEqual("update", commit_data["actions"][0]["action"])
         self.assertEqual("path/to/file", commit_data["actions"][0]["file_path"])
         self.assertEqual("base64", commit_data["actions"][0]["encoding"])
-        self.assertEqual(self.__to_base64(b"new file content"), commit_data["actions"][0]["content"])
+        self.assertEqual(self.__to_base64(b"new file content").decode(), commit_data["actions"][0]["content"])
 
     def test_should_fail_to_commit_changes_when_there_are_no_changes(self):
         self.pyGitlabProject.commits = self.commits
@@ -90,7 +90,7 @@ class GitlabProjectTest(unittest.TestCase):
         self.assertEqual("create", commit_data["actions"][0]["action"])
         self.assertEqual("path/to/file", commit_data["actions"][0]["file_path"])
         self.assertEqual("base64", commit_data["actions"][0]["encoding"])
-        self.assertEqual(self.__to_base64(b"file content"), commit_data["actions"][0]["content"])
+        self.assertEqual(self.__to_base64(b"file content").decode(), commit_data["actions"][0]["content"])
 
     def test_should_fail_to_commit_change_to_when_exception_is_thrown(self):
         self.pyGitlabProject.commits = self.commits

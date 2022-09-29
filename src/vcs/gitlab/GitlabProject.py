@@ -73,12 +73,12 @@ class GitlabProject(RepositoryInterface):
         if remote_file is not None:
             if CommitData.to_base64(content) != remote_file.content.encode():
                 commit_data = CommitData.update_commit_data(author, message, branch, path, content)
-                self.__log.debug("File %s found remotely on branch %s of project %s; it will be updated", path, branch, self.get_full_name())
+                self.__log.debug("File %s found remotely on branch %s of project %s; it will be updated with %s", path, branch, self.get_full_name(), commit_data)
             else:
                 self.__log.debug("No changes were detected, no commit will take place")
         else:
             commit_data = CommitData.create_commit_data(author, message, branch, path, content)
-            self.__log.debug("File %s not found remotely on branch %s of project %s; it will be created", path, branch, self.get_full_name())
+            self.__log.debug("File %s not found remotely on branch %s of project %s; it will be created with %s", path, branch, self.get_full_name(), commit_data)
  
         res = None
         try:

@@ -17,10 +17,11 @@ $ export PATH=$PATH:/path/to/bin
 
 ### SCM access tokens
 
-As of now `meterian-pr` supports opening pull requests and issues on GitHub repositories hence why you will need to export your access token in the environment variable `$GITHUB_TOKEN`
+As `meterian-pr` supports opening pull requests and issues on GitHub and GitLab repositories you will need export a valid access token in the respective environment variables `GITHUB_TOKEN` and `GITLAB_TOKEN`
 
 ```
 $ export GITHUB_TOKEN="ghp_1B4a2e7783***"
+$ export GITLAB_TOKEN="glpat-q12-Wc***"
 ```
 
 ### Meterian JSON report
@@ -54,7 +55,7 @@ Here is an overview of the available commands (the help page):
 
 ```
 $ meterian-pr --help
-usage: meterian-pr [-h] [-l LOGLEVEL] [-v VCS] [--with-pdf-report PATH] [--version] workdir action report repository branch
+usage: meterian-pr [-h] [-v VCS] [--with-pdf-report PATH] [--commit-author-username USERNAME] [--commit-author-email EMAIL] [-l LOGLEVEL] [--version] workdir action report repository branch
 
 positional arguments:
   workdir               The path to the work directory
@@ -65,11 +66,15 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v VCS, --vcs VCS     The version control system where your repository is hosted (i.e. github) (default is github) (supported: ['github', 'gitlab'])
+  --with-pdf-report PATH
+                        Allows to specify the path to the Meterian PDF report to add as part of the pull request if any are opened. This option is considered only if 'PR' is the action being used (view help for more details on actions)
+  --commit-author-username USERNAME
+                        Allows to specify a different commit author username to use (by default the Meterian bot username is used)
+  --commit-author-email EMAIL
+                        Allows to specify a different commit author email address to use (by default the Meterian bot email address is used)
   -l LOGLEVEL, --log LOGLEVEL
                         Sets the logging level (default is warning)
-  -v VCS, --vcs VCS     The version control system where your repository is hosted (i.e. github) (default is github)
-  --with-pdf-report PATH
-                        Allows to specify the path to the Meterian PDF report to add as part of the pull request if any are opened. This option is considered only if 'PR' is the
-                        action being used (view help for more details on actions)
   --version             Show version and exit
+
 ```

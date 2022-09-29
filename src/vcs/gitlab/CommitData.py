@@ -13,7 +13,7 @@ class CommitData:
         self.branch = branch
         self.action = action
         self.file_path = file_path
-        self.base64_file_content = CommitData.to_base64(file_content)
+        self.base64_file_content = CommitData.to_base64(file_content).decode()
 
     # https://docs.gitlab.com/ee/api/commits.html#create-a-commit-with-multiple-files-and-actions
     def to_payload(self) -> dict:
