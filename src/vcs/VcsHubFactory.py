@@ -1,3 +1,4 @@
+from sys import exc_info
 import os
 import logging
 
@@ -27,11 +28,14 @@ class VcsHubFactory:
             envvar = self.PLATFORMS_AND_ENVVARS[self.platform]
             self.__log.debug("Getting auth token on the current environment with env var %s", envvar)
             if envvar in os.environ:
-                pyGithub = PyGithub(os.environ[envvar])
-                self.__log.debug("Currently authenticated as %s", pyGithub.get_user().login)
-                vcshub = Github(pyGithub)
-                self.__log.debug("Created instace of GitHub %s", vcshub)
-                return vcshub
+                try:
+                    pyGithub = PyGithub(os.environ[envvar])
+                    self.__log.debug("Currently authenticated as %s", pyGithub.get_user().login)
+                    vcshub = Github(pyGithub)
+                    self.__log.debug("Created instace of GitHub %s", vcshub)
+                    return vcshub
+                except:
+                    self.__log.error("Failed to create GitHub instance", exc_info=1)
             else:
                 self.__log.debug("Github token not found in environment, no instance will be created")
         
@@ -40,10 +44,13 @@ class VcsHubFactory:
 
             envvar_name = self.PLATFORMS_AND_ENVVARS[self.platform]
             if envvar_name in os.environ:
-                pyGitlab = PyGitlab(private_token=os.environ[envvar_name])
-                pyGitlab.auth()
-                self.__log.debug("Gitlab instance created. Currently authenticated as %s", pyGitlab.user.username)
-                return Gitlab(pyGitlab)
+                try:
+                    pyGitlab = PyGitlab(private_token=os.environ[envvar_name])
+                    pyGitlab.auth()
+                    self.__log.debug("Gitlab instance created. Currently authenticated as %s", pyGitlab.user.username)
+                    return Gitlab(pyGitlab)
+                except:
+                    self.__log.error("Failed to create GitLab instance", exc_info=1)
             else:
                 self.__log.debug("The Gitlab token was not found in your environment")
 
