@@ -4,12 +4,13 @@ Automatically open pull request and issues on your repository as a result of the
 
 ## Installation
 
-Installing `meterian-pr` is fairly easy, simply download the pre-built binary from the [releases page](https://github.com/MeterianHQ/meterian-pr/releases) and export it in your PATH.
+Installing `meterian-pr` is fairly easy, simply download the packaged tool from the [releases page](https://github.com/MeterianHQ/meterian-pr/releases) to your machine and add it to your PATH.
 
 ```
 
-$ wget -q -O /path/to/bin/meterian-pr https://github.com/MeterianHQ/meterian-pr/archive/refs/tags/v1.0.1...
-$ export PATH=$PATH:/path/to/bin
+$ wget -q -O meterian-pr_linux.tar.gz https://github.com/MeterianHQ/meterian-pr/releases/download/1.1.5/meterian-pr_linux.tar.gz
+$ tar -xzf meterian-pr_linux.tar.gz -C /path/to/meterian-pr
+$ export PATH=$PATH:/path/to/meterian-pr/bin
 
 ```
 

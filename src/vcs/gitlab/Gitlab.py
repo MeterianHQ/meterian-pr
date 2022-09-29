@@ -5,7 +5,6 @@ from ..VcsHubInterface import VcsHubInterface
 from ..RepositoryInterface import RepositoryInterface
 from ..IssueInterface import IssueInterface
 from gitlab import Gitlab as PyGitlab
-from gitlab import GitlabHttpError
 from gitlab.v4.objects.projects import Project
 from typing import List
 
@@ -45,6 +44,6 @@ class Gitlab(VcsHubInterface):
             project = self.pyGitlab.projects.get(name)
             self.__log.debug("Found project %s", project)
             return project
-        except GitlabHttpError:
-            self.__log.debug("Project %s was not found", name, exc_info=1)
+        except:
+            self.__log.error("Project %s was not found", name, exc_info=1)
             return None
