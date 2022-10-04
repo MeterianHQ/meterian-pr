@@ -35,7 +35,7 @@ ACTIONS = [ "PR", "ISSUE" ]
 
 WORK_DIR = None
 
-VERSION = "1.1.5"
+VERSION = "1.1.6"
 
 log = logging.getLogger("Main")
 
@@ -264,6 +264,7 @@ if __name__ ==  "__main__":
     gitbot_msg_generator = GitbotMessageGenerator()
 
     if "PR" == args.action:
+        changes = []
         if "autofix" in meterian_json_report:
             git = GitCli(str(WORK_DIR))
             changes = git.get_changes()

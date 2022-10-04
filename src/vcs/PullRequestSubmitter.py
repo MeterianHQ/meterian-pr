@@ -1,5 +1,7 @@
 import os
 import logging
+import re
+
 from .PullRequestInterface import PullRequestInterface
 from .RepositoryInterface import RepositoryInterface
 from .BranchHelper import BranchHelper
@@ -11,7 +13,7 @@ class PullRequestSubmitter:
 
     PR_BRANCH_NAME_PREFIX = "meterian-bot/autofix/"
 
-    SUPPORTED_MANIFEST_FILES = [ "pom.xml", "composer.json", "Gemfile", "Gemfile.lock", "Pipfile", "Pipfile.lock", "package.json", "package-lock.json" ]
+    SUPPORTED_MANIFEST_FILES_PATTERNS = [ "pom.xml", "composer.json", "Gemfile", "Gemfile.lock", "Pipfile", "Pipfile.lock", "package.json", "package-lock.json", "^.*\..+proj$" ]
 
     PR_CONTENT_TITLE_KEY = "title"
     PR_CONTENT_BODY_KEY = "message"
@@ -33,7 +35,7 @@ class PullRequestSubmitter:
         for local_change_relative_path in local_changes_relative_paths:
 
             manifest_file_name = os.path.basename(local_change_relative_path)
-            if not manifest_file_name in self.SUPPORTED_MANIFEST_FILES:
+            if not self.__is_supported_manifest(manifest_file_name):
                 self.__log.debug("Ignoring changes on %s as the file is not a supported manifest file", local_change_relative_path)
                 continue
 
@@ -83,6 +85,16 @@ class PullRequestSubmitter:
                 new_pr = self.repo.create_pull_request(pr_text_content[self.PR_CONTENT_TITLE_KEY], pr_text_content[self.PR_CONTENT_BODY_KEY], self.branch_helper.as_branch_name(pr_branch_ref),
                                                        base_branch, labels)
                 print("A new pull request has been opened, review it here:\n" + new_pr.get_url())
+
+    def __is_supported_manifest(self, file_name: str) -> bool:
+        res = False
+
+        for pattern in self.SUPPORTED_MANIFEST_FILES_PATTERNS:
+            if re.match(pattern, file_name):
+                res = True
+                break
+
+        return res
 
     def __get_pr_labels(self) -> List[str]:
         label = self.repo.get_pr_label()
