@@ -56,20 +56,24 @@ Here is an overview of the available commands (the help page):
 
 ```
 $ meterian-pr --help
-usage: meterian-pr [-h] [-v VCS] [--with-pdf-report PATH] [--commit-author-username USERNAME] [--commit-author-email EMAIL] [-l LOGLEVEL] [--version] workdir action report repository branch
+usage: meterian-pr [-h] [-v VCS] [--api-base-url URL] [--with-pdf-report PATH] [--commit-author-username USERNAME] [--commit-author-email EMAIL] [-l LOGLEVEL] [--version] workdir action report repository branch
 
 positional arguments:
   workdir               The path to the work directory
-  action                The action you want to perform as a result of the autofix results (i.e. PR: open a pull request on the a repository; ISSUE: open an issue on a repository)
+  action                The action you want to perform as a result of the autofix results (i.e. PR: open a pull request on the a repository; ISSUE: open an issue on
+                        a repository)
   report                The path to the Meterian JSON report
   repository            The name of the remote repository (i.e. aws/aws-cli)
   branch                The name of the current branch (must be a branch available remotely)
 
 optional arguments:
   -h, --help            show this help message and exit
-  -v VCS, --vcs VCS     The version control system where your repository is hosted (i.e. github) (default is github) (supported: ['github', 'gitlab'])
+  -v PLATFORM, --vcs PLATFORM
+                        The version control system platform where your repository is hosted (i.e. github) (default is github) (supported: ['github', 'gitlab'])
+  --api-base-url URL    Allows to override the API base URL for the chosen version control system platform
   --with-pdf-report PATH
-                        Allows to specify the path to the Meterian PDF report to add as part of the pull request if any are opened. This option is considered only if 'PR' is the action being used (view help for more details on actions)
+                        Allows to specify the path to the Meterian PDF report to add as part of the pull request if any are opened. This option is considered only
+                        if 'PR' is the action being used (view help for more details on actions)
   --commit-author-username USERNAME
                         Allows to specify a different commit author username to use (by default the Meterian bot username is used)
   --commit-author-email EMAIL
