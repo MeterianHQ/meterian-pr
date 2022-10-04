@@ -1,4 +1,3 @@
-
 import argparse
 import json
 import sys
@@ -16,6 +15,8 @@ from vcs.PullRequestSubmitter import PullRequestSubmitter
 from gitbot.GitbotMessageGenerator import GitbotMessageGenerator
 from vcs.CommitAuthor import CommitAuthor
 from pathlib import Path
+from github import MainClass
+from gitlab.const import DEFAULT_URL
 
 VCS_PLATFORMS = [ "github", "gitlab" ] #, "bitbucket" ]
 
@@ -25,11 +26,16 @@ DEFAULT_AUTHORS_BY_PLATFORM = {
     # ,"bitbucket": BitbucketRepo.DEFAULT_COMMITTER_DATA
 }
 
+DEFAULT_API_BASE_URL_BY_PLATFORM = {
+    "github": MainClass.DEFAULT_BASE_URL,
+    "gitlab": DEFAULT_URL
+}
+
 ACTIONS = [ "PR", "ISSUE" ]
 
 WORK_DIR = None
 
-VERSION = "1.1.4"
+VERSION = "1.1.5"
 
 log = logging.getLogger("Main")
 
@@ -61,8 +67,14 @@ def parse_args():
         "-v",
         "--vcs",
         default="github",
-        metavar="VCS",
-        help="The version control system where your repository is hosted\n (i.e. github) (default is github) (supported: " + str(VCS_PLATFORMS) + ")"
+        metavar="PLATFORM",
+        help="The version control system platform where your repository is hosted\n (i.e. github) (default is github) (supported: " + str(VCS_PLATFORMS) + ")"
+    )
+
+    parser.add_argument(
+        "--api-base-url",
+        metavar="URL",
+        help="Allows to override the API base URL for the chosen version control system platform"
     )
 
     parser.add_argument(
@@ -150,6 +162,17 @@ def get_commit_author_details(args):
     log.info("Commit author to be employed is: %s", author)
     return author
 
+def create_vcs_platform(args):
+    api_base_url = DEFAULT_API_BASE_URL_BY_PLATFORM[args.vcs]
+
+    if args.api_base_url:
+        api_base_url = args.api_base_url
+        log.info("Overridden API base URL for %s with %s", args.vcs, api_base_url)
+
+    vcs = VcsHubFactory(args.vcs, api_base_url).create()
+
+    return vcs
+
 if __name__ ==  "__main__":
     print()
 
@@ -210,7 +233,7 @@ if __name__ ==  "__main__":
             elif args.action == "ISSUE":
                 log.warning("Unsupported option '--with-pdf-report' being used with action 'ISSUE, it will be ignored")
 
-    vcsPlatform = VcsHubFactory(args.vcs).create()
+    vcsPlatform = create_vcs_platform(args)
     if vcsPlatform is None:
         sys.stderr.write("Unable to create an instance for the " +args.vcs.title()+ " platform, ensure appropriate access token environment variables are appropriately set\n")
         sys.stderr.write("Ensure these environment variables are set per platform:\n")
@@ -233,7 +256,7 @@ if __name__ ==  "__main__":
             sys.stderr.write("\n")
             sys.exit(-1)
     else:
-        sys.stderr.write("Repository %s was not found on %s\n" % (args.repository, args.vcs))
+        sys.stderr.write("Repository %s was not found\n" % args.repository)
         sys.stderr.write("\n")
         sys.exit(-1)
     
