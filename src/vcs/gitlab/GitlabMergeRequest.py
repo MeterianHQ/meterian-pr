@@ -14,8 +14,8 @@ class GitlabMergeRequest(PullRequestInterface):
         self.url = self.pyMergeRequest.web_url
 
     def edit(self, title: str = None, body: str = None):
-        self.pyMergeRequest.title = self.__parseNone(title, "")
-        self.pyMergeRequest.body = self.__parseNone(body, "")
+        self.pyMergeRequest.title = self.__parseNone(title, self.title)
+        self.pyMergeRequest.description = self.__parseNone(body, self.body)
         self.pyMergeRequest.save()
 
     def get_url(self) -> str:

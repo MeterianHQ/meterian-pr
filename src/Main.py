@@ -35,7 +35,7 @@ ACTIONS = [ "PR", "ISSUE" ]
 
 WORK_DIR = None
 
-VERSION = "1.1.6"
+VERSION = "1.1.7"
 
 log = logging.getLogger("Main")
 
