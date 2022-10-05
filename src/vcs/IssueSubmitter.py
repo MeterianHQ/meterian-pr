@@ -49,6 +49,6 @@ class IssueSubmitter:
         label = self.repo.get_issue_label()
         label_available = self.repo.create_label(label.name, label.description, label.color, label.text_color)
         if label_available:
-            return [self.repo.get_pr_label().name]
+            return [self.repo.get_issue_label().name]
         else:
             return []
