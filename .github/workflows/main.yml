@@ -33,16 +33,19 @@ jobs:
     needs: test_routine
     name: "Build (Linux)"
     runs-on: ubuntu-latest
+    container:
+      image: fydeinc/pyinstaller@sha256:bbad26fc29dc6852033901f25f8f52ec19bdf499e4915309cd2a489fff1c6379
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
       - name: Build binary
+        env:
+            PLATFORMS: "linux"
+            SRCDIR: ${{ github.workspace }}
         run: |
-             pip3 install -r requirements.txt
-             pip3 install pyinstaller==4.8
-             pyinstaller --paths=src --name=meterian-pr --onefile src/Main.py
-             ./dist/meterian-pr --version
+             dumb-init -- /entrypoint.sh --paths=src --name=meterian-pr --hidden-import _cffi_backend src/Main.py
+             ./dist/linux/meterian-pr --version
 
       - name: Package binary
         run: ./scripts/archive_tool.sh meterian-pr_linux.tar.gz
@@ -59,20 +62,21 @@ jobs:
     name: "Build (Alpine Linux)"
     runs-on: ubuntu-latest
     container:
-      image: meterian/cli:latest
+      image: fydeinc/pyinstaller@sha256:bbad26fc29dc6852033901f25f8f52ec19bdf499e4915309cd2a489fff1c6379
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
       - name: Build binary
+        env:
+            PLATFORMS: "alpine,linux"
+            SRCDIR: ${{ github.workspace }}
         run: |
-             pip3 install -r requirements.txt
-             pip3 install pyinstaller==4.8
-             pyinstaller --paths=src --name=meterian-pr --onefile src/Main.py --hidden-import _cffi_backend
-             ./dist/meterian-pr --version
+             /switch_to_alpine.sh --paths=src --name=meterian-pr --hidden-import _cffi_backend src/Main.py
+             ./dist/alpine/meterian-pr --version
 
       - name: Package binary
-        run: ./scripts/archive_tool.sh meterian-pr_alpine-linux.tar.gz
+        run: sh scripts/archive_tool.sh meterian-pr_alpine-linux.tar.gz
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
