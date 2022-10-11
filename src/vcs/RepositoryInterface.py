@@ -6,6 +6,7 @@ from .LabelData import LabelData
 from .IssueInterface import IssueInterface
 from .PullRequestInterface import PullRequestInterface
 from .CommitAuthor import CommitAuthor
+from .ChangeInfo import ChangeInfo
 
 class RepositoryInterface(metaclass=abc.ABCMeta):
 
@@ -32,6 +33,8 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
                 callable(subclass.create_branch) and
                 hasattr(subclass, 'commit_change') and
                 callable(subclass.commit_change) and
+                hasattr(subclass, 'commit_changes') and
+                callable(subclass.commit_changes) and
                 hasattr(subclass, 'create_label') and
                 callable(subclass.create_label) and
                 hasattr(subclass, 'create_pull_request') and
@@ -81,6 +84,11 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def commit_change(self, author: CommitAuthor, message: str, branch: str, path: str, content: bytes) -> bool:
         """Commits change to file on a branch"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def commit_changes(self, author: CommitAuthor, message: str, branch: str, changes: List[ChangeInfo]) -> bool:
+        """Commits multiple changes on a specific branch"""
         raise NotImplementedError
 
     @abc.abstractmethod

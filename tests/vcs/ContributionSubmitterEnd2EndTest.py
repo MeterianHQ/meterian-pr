@@ -10,11 +10,11 @@ from tests.vcs.End2EndTestFunctions import End2EndTestFunctions
 
 class ContributionSubmitterEnd2EndTest:
 
-    def __init__(self, vcs_platform: str) -> None:
+    def __init__(self, vcs_platform: str, api_base_url: str) -> None:
         End2EndTestFunctions.init_logging(logging.DEBUG)
 
         self.gitbot = GitbotMessageGenerator()
-        self.vcs_platform = VcsHubFactory(vcs_platform).create()
+        self.vcs_platform = VcsHubFactory(vcs_platform, api_base_url).create()
 
     def should_submit_pull_request(self, work_dir: str, repository_name: str, repository_branch, author: CommitAuthor):
         pr_text_content = self.gitbot.genMessage(
