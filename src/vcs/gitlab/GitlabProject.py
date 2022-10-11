@@ -8,6 +8,7 @@ from .GitlabIssue import GitlabIssue
 from .CommitData import CommitData
 from ..LabelData import LabelData
 from ..CommitAuthor import CommitAuthor
+from ..ChangeInfo import ChangeInfo
 from gitlab.v4.objects.projects import Project
 from gitlab.v4.objects.files import ProjectFile
 from gitlab.v4.objects.branches import ProjectBranch
@@ -90,6 +91,34 @@ class GitlabProject(RepositoryInterface):
 
         return True if res is not None else False
 
+    def commit_changes(self, author: CommitAuthor, message: str, branch: str, changes: List[ChangeInfo]) -> bool:
+        res = None
+
+        if len(changes) > 0:
+            payload = CommitData(author, message, branch, None, None, b'').to_payload()
+
+            payload["actions"] = []
+            for change in changes:
+                remote_file = self.__get_remote_file(change.file_path, branch)
+                if remote_file:
+                    if CommitData.to_base64(change.content) != remote_file.content.encode():
+                        commit_data = CommitData.update_commit_data(author, message, branch, change.file_path, change.content)
+                    else:
+                        commit_data = None
+                        self.__log.debug("%s has not changed, it will not be added to the commit", change.file_path)
+                else:
+                    commit_data = CommitData.create_commit_data(author, message, branch, change.file_path, change.content)
+                if commit_data:
+                    payload["actions"].append(commit_data.to_payload()["actions"][0])
+
+            if len(payload["actions"]) > 0:
+                try:
+                    res = self.pyGitlabProject.commits.create(payload)
+                except:
+                    self.__log.warning("Unexpected: failed to perform commit", exc_info=1)
+
+        return True if res is not None else False
+
     def create_branch(self, parent_branch_name: str, new_branch_name: str) -> bool:
         res = None
 
@@ -103,7 +132,7 @@ class GitlabProject(RepositoryInterface):
                 self.__log.debug("New branch %s successfully created with result=%s", new_branch_name, str(res))
             except:
                 res = None
-                self.__log.warning("Unexpected: failed to create branch %s from parent branch %s on project %s", new_branch_name, parent_branch_name, self.get_full_name())
+                self.__log.error("Unexpected: failed to create branch %s from parent branch %s on project %s", new_branch_name, parent_branch_name, self.get_full_name(), exc_info=1)
         else:
             self.__log.debug("Branch %s already exists, it won't be created", new_branch_name)
 

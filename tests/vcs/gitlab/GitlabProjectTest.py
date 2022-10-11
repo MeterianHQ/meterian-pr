@@ -9,6 +9,7 @@ from src.vcs.gitlab.GitlabProject import GitlabProject
 from src.vcs.LabelData import LabelData
 from src.vcs.gitlab.GitlabIssue import GitlabIssue
 from src.vcs.CommitAuthor import CommitAuthor
+from src.vcs.ChangeInfo import ChangeInfo
 from gitlab.v4.objects.commits import ProjectCommitManager
 from gitlab.v4.objects.files import ProjectFileManager
 from gitlab.v4.objects.branches import ProjectBranchManager
@@ -61,7 +62,7 @@ class GitlabProjectTest(unittest.TestCase):
         self.assertEqual("base64", commit_data["actions"][0]["encoding"])
         self.assertEqual(self.__to_base64(b"new file content").decode(), commit_data["actions"][0]["content"])
 
-    def test_should_fail_to_commit_changes_when_there_are_no_changes(self):
+    def test_should_fail_to_commit_change_when_there_is_no_change(self):
         self.pyGitlabProject.commits = self.commits
         remote_file = self.__create_remote_file(b"file content")
         self.files.get = MagicMock(return_value=remote_file)
@@ -225,6 +226,65 @@ class GitlabProjectTest(unittest.TestCase):
         self.pyGitlabProject.issues = self.issues
 
         self.assertIsNone(self.project.create_issue("The title", "The description", []))
+
+    def test_should_commit_multiple_changes_at_once(self):
+        def mock_get(file_path: str = None, ref: str = None):
+            if "path/to/fileA" == file_path:
+                return self.__create_remote_file(b"content of file A")
+            else:
+                raise GitlabHttpError("404 File Not Found", 404, None)
+
+        self.files.get = Mock(side_effect=mock_get)
+        self.pyGitlabProject.commits = self.commits
+        self.pyGitlabProject.files = self.files
+        changes = [ ChangeInfo("path/to/fileA", b"new content of file A"), ChangeInfo("path/to/fileB", b'content of file B') ]
+
+        res = self.project.commit_changes(self.author, "the commit message", "feature/branch", changes)
+
+        self.assertTrue(res)
+        self.pyGitlabProject.commits.create.assert_called_once_with(ANY)
+        commit_data = self.pyGitlabProject.commits.create.call_args.args[0]
+        self.assertEqual("feature/branch", commit_data["branch"])
+        self.assertEqual("the commit message", commit_data["commit_message"] )
+        self.assertEqual(2, len(commit_data["actions"]))
+        self.__assertExistingFileUpdated("path/to/fileA", self.__to_base64_str(b"new content of file A"), commit_data["actions"])
+        self.__assertNewFileUpdated("path/to/fileB", self.__to_base64_str(b"content of file B"), commit_data["actions"])
+
+    def test_should_not_commit_multiple_changes_at_once_when_there_are_no_actual_changes(self):
+        def mock_get(file_path: str = None, ref: str = None):
+            if "path/to/fileA" == file_path:
+                return self.__create_remote_file(b"content of file A")
+            elif "path/to/fileB" == file_path:
+                return self.__create_remote_file(b"content of file B")
+            else:
+                raise GitlabHttpError("404 File Not Found", 404, None)
+
+        self.files.get = Mock(side_effect=mock_get)
+        self.pyGitlabProject.commits = self.commits
+        self.pyGitlabProject.files = self.files
+        changes = [ ChangeInfo("path/to/fileA", b"content of file A"), ChangeInfo("path/to/fileB", b'content of file B') ]
+
+        res = self.project.commit_changes(self.author, "the commit message", "feature/branch", changes)
+
+        self.assertFalse(res)
+        self.pyGitlabProject.commits.create.assert_not_called
+
+    def __to_base64_str(self, content: bytes):
+        return self.__to_base64(content).decode()
+
+    def __assertExistingFileUpdated(self, expected_path: str, expected_content: str, actual_actions: list):
+        for action in actual_actions:
+            if "update" == action["action"] and expected_path == action["file_path"] and expected_content == action["content"] and "base64" == action["encoding"]:
+                return
+
+        self.fail("Expected update action on file " + expected_path + " but was not found\nActual actions: " + str(actual_actions))
+
+    def __assertNewFileUpdated(self, expected_path: str, expected_content: str, actual_actions: list):
+        for action in actual_actions:
+            if "create" == action["action"] and expected_path == action["file_path"] and expected_content == action["content"]and "base64" == action["encoding"]:
+                return
+
+        self.fail("Expected create action on file " + expected_path + " but was not found\nActual actions: " + str(actual_actions))
 
     def __assertAuthorEqual(self, expected_author: CommitAuthor, glab_commit_data: dict):
         self.assertEqual(expected_author.username, glab_commit_data["author_name"])
