@@ -1,3 +1,4 @@
+import pip_system_certs.wrapt_requests
 import argparse
 import json
 import sys
@@ -40,7 +41,7 @@ ACTIONS = [ "PR", "ISSUE" ]
 
 WORK_DIR = None
 
-VERSION = "1.1.10"
+VERSION = "1.1.11"
 
 log = logging.getLogger("Main")
 

@@ -9,6 +9,7 @@ verify_ssl = true
 requests = "*"
 PyGitHub = "1.55"
 python-gitlab = "3.9.0"
+pip_system_certs = "==3.1"
 
 [requires]
 python_version = "3.8"
