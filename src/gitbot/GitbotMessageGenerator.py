@@ -8,16 +8,19 @@ class GitbotMessageGenerator:
     ISSUE_OPT_KEY = "issue"
     REPORT_OPT_KEY = "report"
 
-    __BASE_URL = "https://services3.www.meterian.io/api/v1/gitbot/results/parse"
+    __BASE_URL = "https://services3.www.meterian.io/api/v1/gitbot/results/parse/"
     __log =  logging.getLogger("GitbotMessageGenerator")
 
     def __init__(self):
         pass
 
-    def genMessage(self, report: map, options: map) -> map:
+    def genMessage(self, report: map, options: map, exclusions: str = None) -> map:
         body = { "report": report, "options": options }
         headers = {"Content-Type": "application/json"}
-        response = requests.post(self.__BASE_URL, data = json.dumps(body), headers = headers)
+        if exclusions is None:
+            response = requests.post(self.__BASE_URL, data = json.dumps(body), headers = headers)
+        else:
+            response = requests.post(self.__BASE_URL + "?exclude=" + exclusions , data = json.dumps(body), headers = headers)
         if response.status_code == 200:
             return json.loads(response.text)
         else:

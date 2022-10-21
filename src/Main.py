@@ -5,6 +5,7 @@ import logging
 import http.client
 import os
 import shutil
+import requests
 
 from vcs.IssueSubmitter import IssueSubmitter
 from vcs.GitCli import GitCli
@@ -17,6 +18,10 @@ from vcs.CommitAuthor import CommitAuthor
 from pathlib import Path
 from github import MainClass
 from gitlab.const import DEFAULT_URL
+from typing import List
+from vcs.PrChangesGenerator import PrChangesGenerator
+from vcs.PrChangesGenerator import PrChange
+from datetime import datetime
 
 VCS_PLATFORMS = [ "github", "gitlab" ] #, "bitbucket" ]
 
@@ -35,7 +40,7 @@ ACTIONS = [ "PR", "ISSUE" ]
 
 WORK_DIR = None
 
-VERSION = "1.1.9"
+VERSION = "1.1.10"
 
 log = logging.getLogger("Main")
 
@@ -59,7 +64,6 @@ def parse_args():
     parser = HelpingParser()
     parser.add_argument("workdir", help="The path to the work directory")
     parser.add_argument("action", help="The action you want to perform as a result of the autofix results\n (i.e. PR: open a pull request on the a repository; ISSUE: open an issue on a repository)")
-    parser.add_argument("report", help="The path to the Meterian JSON report")
     parser.add_argument("repository", help="The name of the remote repository\n (i.e. aws/aws-cli)")
     parser.add_argument("branch", help="The name of the current branch (must be a branch available remotely)")
 
@@ -75,6 +79,18 @@ def parse_args():
         "--api-base-url",
         metavar="URL",
         help="Allows to override the API base URL for the chosen version control system platform"
+    )
+
+    parser.add_argument(
+        "--record-prs",
+        action='store_true',
+        help="Allows to record information about pull requests opened on the Meterian report (note: a valid Meterian authentication token must be set in the environment)"
+    )
+
+    parser.add_argument(
+        "--json-report",
+        metavar="PATH",
+        help="Allows to specify the path to the Meterian JSON report. This option is required if 'ISSUE' is the action being used (view help for more details on actions)"
     )
 
     parser.add_argument(
@@ -145,8 +161,8 @@ def initLogging(args):
 def is_tool_installed(tool_name):
     return shutil.which(tool_name) is not None
 
-def generate_contribution_content(gitbot: GitbotMessageGenerator, meterian_json_report: dict, options: dict) -> dict:
-    content = gitbot.genMessage(meterian_json_report, options)
+def generate_contribution_content(gitbot: GitbotMessageGenerator, meterian_json_report: dict, options: dict, exclusions: str = None) -> dict:
+    content = gitbot.genMessage(meterian_json_report, options, exclusions)
     return content
 
 def get_commit_author_details(args):
@@ -172,6 +188,43 @@ def create_vcs_platform(args):
     vcs = VcsHubFactory(args.vcs, api_base_url).create()
 
     return vcs
+
+def get_changes_locations(work_dir) -> List[Path]:
+    locations = []
+    for root, dirs, files in os.walk(work_dir):
+        files = [f for f in files if f == PrChangesGenerator.PR_REPORT_FILENAME]
+        for file in files:
+            if Path(root) not in locations:
+                locations.append(Path(root))
+    return locations
+
+def record_pr_info_on_report(meterian_project_id: str, pr_infos_by_dep: dict):
+    print("Recording PR information to report")
+    log.debug("Requested to record PR information. Prepping data...")
+    data = {}
+    data["createdAt"] = datetime.strftime(datetime.now(), '%d/%m/%Y-%H:%M:%S')
+    data["entries"] = []
+    for dependency, pr_infos in pr_infos_by_dep.items():
+        entry = {}
+        entry["dependency"] = dependency.to_payload()["dependency"]
+        entry["prs"] = pr_infos
+        data["entries"].append(entry)
+
+    json_data = json.dumps(data) 
+    log.debug("Data prepped: %s", json_data)
+
+    log.debug("Recording data...")
+    meterian_token = os.environ.get("METERIAN_API_TOKEN", None)
+    headers = {"Content-Type": "application/json", "Authorization": "token " + str(meterian_token)}
+    url = "https://www.meterian.com/api/v1/reports/" + meterian_project_id + "/prs"
+    response = requests.post(url, data = json_data, headers = headers)
+
+    if response.status_code == 200:
+        log.debug("PR data successfully recorded to report (PID: %s)", str(meterian_project_id))
+        print("PR data successfully recorded to report")
+    else:
+        print("Failed to record PR data")
+        log.error("Could not record PR data\nStatus code: %s\nResponse: %s", str(response.status_code), str(response.text))
 
 if __name__ ==  "__main__":
     print()
@@ -199,39 +252,30 @@ if __name__ ==  "__main__":
         sys.stderr.write("\n")
         sys.exit(-1)
 
-    meterian_json_report_path = os.path.abspath(args.report)
-    if os.path.exists(meterian_json_report_path) is False:
-        sys.stderr.write("Path for meterian JSON report " + args.report + " does not exists, impossible to load autofix results\n")
-        sys.stderr.write("\n")
-        sys.exit(-1)
-    else:
-        try:
-            meterian_report = open(meterian_json_report_path)
-            meterian_json_report = json.load(meterian_report)
-            meterian_report.close()
-        except:
-            sys.stderr.write("Unable to load Meterian JSON report at %s \n" % meterian_json_report_path)
-            sys.stderr.write("Ensure it is a valid JSON report\n")
-            sys.stderr.write("\n")
-            sys.exit(-1)
-    
-        meterian_pdf_report_path = None
-        if args.with_pdf_report:
-            if args.action == "PR":
-                meterian_pdf_report_path = os.path.abspath(args.with_pdf_report)
-                if os.path.exists(meterian_pdf_report_path) is False:
-                    sys.stderr.write("Path for PDF report " + meterian_pdf_report_path + " does not exists\n")
-                    sys.stderr.write("\n")
-                    sys.exit(-1)
+    meterian_pdf_report_path = None
+    if args.with_pdf_report:
+        if args.action == "PR":
+            meterian_pdf_report_path = os.path.abspath(args.with_pdf_report)
+            if os.path.exists(meterian_pdf_report_path) is False:
+                sys.stderr.write("Path for PDF report " + meterian_pdf_report_path + " does not exists\n")
+                sys.stderr.write("\n")
+                sys.exit(-1)
+            else:
+                if Path(WORK_DIR) in Path(meterian_pdf_report_path).parents:
+                    log.debug("Specified PDF report %s relative to project dir %s", meterian_pdf_report_path, str(WORK_DIR))
+                    meterian_pdf_report_path = str(Path(meterian_pdf_report_path).relative_to(WORK_DIR))
+                    log.debug("Will use relative path of PDF report %s", meterian_pdf_report_path)
                 else:
-                    if Path(WORK_DIR) in Path(meterian_pdf_report_path).parents:
-                        log.debug("Specified PDF report %s relative to project dir %s", meterian_pdf_report_path, str(WORK_DIR))
-                        meterian_pdf_report_path = str(Path(meterian_pdf_report_path).relative_to(WORK_DIR))
-                        log.debug("Will use relative path of PDF report %s", meterian_pdf_report_path)
-                    else:
-                        log.warning("PDF report %s will be ignored as it's not relative to project in directory %s", meterian_pdf_report_path, str(WORK_DIR))
-            elif args.action == "ISSUE":
-                log.warning("Unsupported option '--with-pdf-report' being used with action 'ISSUE, it will be ignored")
+                    log.warning("PDF report %s will be ignored as it's not relative to project in directory %s", meterian_pdf_report_path, str(WORK_DIR))
+        elif args.action == "ISSUE":
+            log.warning("Unsupported option '--with-pdf-report' being used with action 'ISSUE, it will be ignored")
+
+    record_prs = False
+    if args.record_prs is not None and args.record_prs == True:
+        if "METERIAN_API_TOKEN" in os.environ:
+            record_prs = True
+        else:
+            log.warning("A Meterian API token was not found in your environment, PRs information won't be recorded")
 
     vcsPlatform = create_vcs_platform(args)
     if vcsPlatform is None:
@@ -264,36 +308,87 @@ if __name__ ==  "__main__":
     gitbot_msg_generator = GitbotMessageGenerator()
 
     if "PR" == args.action:
-        changes = []
-        if "autofix" in meterian_json_report:
-            git = GitCli(str(WORK_DIR))
-            changes = git.get_changes()
-            if changes is None:
-                sys.stderr.write("Change detection failed\n")
-                sys.exit(-1)
-
-            if len(changes) == 0:
-                print("No changes were made in your repository therefore no pull request will be opened")
-                sys.exit(0)
-
-        author = get_commit_author_details(args)
-        pr_submitter = PullRequestSubmitter(WORK_DIR, remote_repo, author)
-
-        pr_text_content = generate_contribution_content(gitbot_msg_generator, meterian_json_report, {
-            GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
-            GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
-            GitbotMessageGenerator.ISSUE_OPT_KEY: False
-        })
-        if not pr_text_content:
-            sys.stderr.write("Unable to generate the text content for the pull request\n")
-            sys.stderr.write("\n")
+        git = GitCli(str(WORK_DIR))
+        changes = git.get_changes()
+        if changes is None:
+            sys.stderr.write("Git changes detection failed\n")
             sys.exit(-1)
-    
-        pr_submitter.submit(pr_text_content, changes, args.branch, meterian_pdf_report_path)
 
+        locations = get_changes_locations(WORK_DIR)
+        if len(locations) == 0:
+            print("No changes were detected in your repository in order to open PRs")
+            sys.exit(-1)
+
+        generator = PrChangesGenerator(Path(WORK_DIR), changes)
+
+        meterian_project_id = None
+        opened_prs = []
+        pr_infos_by_dep = {}
+        author = get_commit_author_details(args)
+        for location in locations:
+            pr_change = generator.generate(location)
+            if pr_change:
+                if meterian_project_id is None:
+                    meterian_project_id = pr_change.meterian_project_id
+
+                pr_submitter = PullRequestSubmitter(WORK_DIR, remote_repo, author)
+
+                pr_text_content = generate_contribution_content(gitbot_msg_generator, pr_change.pr_report, {
+                    GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
+                    GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
+                    GitbotMessageGenerator.ISSUE_OPT_KEY: False
+                }, "issues,licenses")
+                if not pr_text_content:
+                    sys.stderr.write("Unable to generate the text content for the pull request\n")
+                    sys.stderr.write("\n")
+                    sys.exit(-1)
+            
+                pr_change = pr_submitter.submit(pr_text_content, pr_change, args.branch, meterian_pdf_report_path)
+                if pr_change.pr:
+                    opened_prs.append(pr_change.pr)
+
+                    if record_prs == True:
+                        for dependency in pr_change.dependencies:
+                            pr_info = { "title": pr_change.pr.get_title(), "url": pr_change.pr.get_url() }
+                            pr_infos = pr_infos_by_dep.get(dependency, [])
+                            if pr_info not in pr_infos:
+                                pr_infos.append(pr_info)
+                                pr_infos_by_dep[dependency] = pr_infos
+
+        if len(opened_prs) > 0:
+            print("New pull requests opened:")
+        for pr in opened_prs:
+            print("- " + pr.get_url())
+        print()
+
+        if record_prs == True:
+            record_pr_info_on_report(meterian_project_id, pr_infos_by_dep)
     
+
     if "ISSUE" == args.action:
         issue_submitter = IssueSubmitter(vcsPlatform, remote_repo)
+
+        meterian_report = None
+        if args.json_report:
+            meterian_json_report_path = os.path.abspath(args.json_report)
+            if os.path.exists(meterian_json_report_path) is False:
+                sys.stderr.write("Meterian JSON report not found @ " + str(meterian_json_report_path) + "\n")
+                sys.stderr.write("\n")
+                sys.exit(-1)
+            else:
+                try:
+                    meterian_report = open(meterian_json_report_path)
+                    meterian_json_report = json.load(meterian_report)
+                    meterian_report.close()
+                except:
+                    sys.stderr.write("Unable to load Meterian JSON report at %s \n" % str(meterian_json_report_path))
+                    sys.stderr.write("Ensure it is a valid JSON report\n")
+                    sys.stderr.write("\n")
+                    sys.exit(-1)
+        else:
+            sys.stderr.write("Unable to open issue, Meterian JSON report at not provided\n")
+            sys.stderr.write("\n")
+            sys.exit(-1)
 
         issue_text_content = generate_contribution_content(gitbot_msg_generator, meterian_json_report, {
             GitbotMessageGenerator.ISSUE_OPT_KEY: True,

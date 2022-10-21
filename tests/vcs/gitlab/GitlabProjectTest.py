@@ -9,7 +9,7 @@ from src.vcs.gitlab.GitlabProject import GitlabProject
 from src.vcs.LabelData import LabelData
 from src.vcs.gitlab.GitlabIssue import GitlabIssue
 from src.vcs.CommitAuthor import CommitAuthor
-from src.vcs.ChangeInfo import ChangeInfo
+from src.vcs.PrChangesGenerator import FilesystemChange
 from gitlab.v4.objects.commits import ProjectCommitManager
 from gitlab.v4.objects.files import ProjectFileManager
 from gitlab.v4.objects.branches import ProjectBranchManager
@@ -237,7 +237,7 @@ class GitlabProjectTest(unittest.TestCase):
         self.files.get = Mock(side_effect=mock_get)
         self.pyGitlabProject.commits = self.commits
         self.pyGitlabProject.files = self.files
-        changes = [ ChangeInfo("path/to/fileA", b"new content of file A"), ChangeInfo("path/to/fileB", b'content of file B') ]
+        changes = [ FilesystemChange("path/to/fileA", b"new content of file A"), FilesystemChange("path/to/fileB", b'content of file B') ]
 
         res = self.project.commit_changes(self.author, "the commit message", "feature/branch", changes)
 
@@ -262,7 +262,7 @@ class GitlabProjectTest(unittest.TestCase):
         self.files.get = Mock(side_effect=mock_get)
         self.pyGitlabProject.commits = self.commits
         self.pyGitlabProject.files = self.files
-        changes = [ ChangeInfo("path/to/fileA", b"content of file A"), ChangeInfo("path/to/fileB", b'content of file B') ]
+        changes = [ FilesystemChange("path/to/fileA", b"content of file A"), FilesystemChange("path/to/fileB", b'content of file B') ]
 
         res = self.project.commit_changes(self.author, "the commit message", "feature/branch", changes)
 

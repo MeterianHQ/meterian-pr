@@ -6,7 +6,7 @@ from .LabelData import LabelData
 from .IssueInterface import IssueInterface
 from .PullRequestInterface import PullRequestInterface
 from .CommitAuthor import CommitAuthor
-from .ChangeInfo import ChangeInfo
+from .PrChangesGenerator import FilesystemChange
 
 class RepositoryInterface(metaclass=abc.ABCMeta):
 
@@ -87,7 +87,7 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def commit_changes(self, author: CommitAuthor, message: str, branch: str, changes: List[ChangeInfo]) -> bool:
+    def commit_changes(self, author: CommitAuthor, message: str, branch: str, changes: List[FilesystemChange]) -> bool:
         """Commits multiple changes on a specific branch"""
         raise NotImplementedError
 

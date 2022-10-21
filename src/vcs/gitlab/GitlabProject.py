@@ -8,7 +8,7 @@ from .GitlabIssue import GitlabIssue
 from .CommitData import CommitData
 from ..LabelData import LabelData
 from ..CommitAuthor import CommitAuthor
-from ..ChangeInfo import ChangeInfo
+from ..PrChangesGenerator import FilesystemChange
 from gitlab.v4.objects.projects import Project
 from gitlab.v4.objects.files import ProjectFile
 from gitlab.v4.objects.branches import ProjectBranch
@@ -41,7 +41,7 @@ class GitlabProject(RepositoryInterface):
     def __init__(self, pyGitlabProject: Project):
         self.pyGitlabProject = pyGitlabProject
         self.namespace = self.__getOrDefault(self.pyGitlabProject.namespace, 'path', None)
-        self.name = self.pyGitlabProject.name
+        self.name = self.pyGitlabProject.path
         self.default_branch = self.pyGitlabProject.default_branch
         self.issues_enabled = self.pyGitlabProject.issues_enabled
 
@@ -91,7 +91,7 @@ class GitlabProject(RepositoryInterface):
 
         return True if res is not None else False
 
-    def commit_changes(self, author: CommitAuthor, message: str, branch: str, changes: List[ChangeInfo]) -> bool:
+    def commit_changes(self, author: CommitAuthor, message: str, branch: str, changes: List[FilesystemChange]) -> bool:
         res = None
 
         if len(changes) > 0:
@@ -99,15 +99,15 @@ class GitlabProject(RepositoryInterface):
 
             payload["actions"] = []
             for change in changes:
-                remote_file = self.__get_remote_file(change.file_path, branch)
+                remote_file = self.__get_remote_file(change.rel_file_path, branch)
                 if remote_file:
                     if CommitData.to_base64(change.content) != remote_file.content.encode():
-                        commit_data = CommitData.update_commit_data(author, message, branch, change.file_path, change.content)
+                        commit_data = CommitData.update_commit_data(author, message, branch, change.rel_file_path, change.content)
                     else:
                         commit_data = None
-                        self.__log.debug("%s has not changed, it will not be added to the commit", change.file_path)
+                        self.__log.debug("%s has not changed, it will not be added to the commit", change.rel_file_path)
                 else:
-                    commit_data = CommitData.create_commit_data(author, message, branch, change.file_path, change.content)
+                    commit_data = CommitData.create_commit_data(author, message, branch, change.rel_file_path, change.content)
                 if commit_data:
                     payload["actions"].append(commit_data.to_payload()["actions"][0])
 

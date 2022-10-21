@@ -8,7 +8,7 @@ from github.Label import Label
 from github.Repository import Repository as PyGithubRepository
 from github.InputGitAuthor import InputGitAuthor
 from ..CommitAuthor import CommitAuthor
-from ..ChangeInfo import ChangeInfo
+from ..PrChangesGenerator import FilesystemChange
 from .GithubIssue import GithubIssue
 from ..PullRequestInterface import PullRequestInterface
 from ..RepositoryInterface import RepositoryInterface
@@ -124,7 +124,7 @@ class GithubRepo(RepositoryInterface):
             self.__log.warning("Branch %s was not found, no commit will be made at this stage", branch)
             return False
 
-    def commit_changes(self, author: CommitAuthor, message: str, branch: str, changes: List[ChangeInfo]) -> bool:
+    def commit_changes(self, author: CommitAuthor, message: str, branch: str, changes: List[FilesystemChange]) -> bool:
         return super().commit_changes(author, message, branch, changes)
 
     def create_pull_request(self, title: str, body: str, head: str, base: str, labels: List[str] = []) -> PullRequestInterface:
