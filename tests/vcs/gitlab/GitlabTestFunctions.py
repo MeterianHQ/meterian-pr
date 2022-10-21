@@ -6,7 +6,7 @@ class GitlabTestFunctions:
         tokens = OrgAndRepo.rsplit('/', 1)
         project = Mock(spec=Project)
         project.namespace = { 'path': tokens[0] }
-        project.name = tokens[1]
+        project.path = tokens[1]
         project.default_branch = "master"
         project.owner = {}
         project.issues_enabled = True
