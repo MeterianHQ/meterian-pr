@@ -41,7 +41,9 @@ ACTIONS = [ "PR", "ISSUE" ]
 
 WORK_DIR = None
 
-VERSION = "1.1.11"
+REQUESTS_SSL_VERIFY = os.environ.get("METERIAN_PR_SSL_VERIFY", "True").lower() not in [ "false" ]
+
+VERSION = "1.1.12"
 
 log = logging.getLogger("Main")
 
@@ -186,7 +188,7 @@ def create_vcs_platform(args):
         api_base_url = args.api_base_url
         log.info("Overridden API base URL for %s with %s", args.vcs, api_base_url)
 
-    vcs = VcsHubFactory(args.vcs, api_base_url).create()
+    vcs = VcsHubFactory(args.vcs, api_base_url, requests_ssl_verify=REQUESTS_SSL_VERIFY).create()
 
     return vcs
 
@@ -218,7 +220,7 @@ def record_pr_info_on_report(meterian_project_id: str, pr_infos_by_dep: dict):
     meterian_token = os.environ.get("METERIAN_API_TOKEN", None)
     headers = {"Content-Type": "application/json", "Authorization": "token " + str(meterian_token)}
     url = "https://www.meterian.com/api/v1/reports/" + meterian_project_id + "/prs"
-    response = requests.post(url, data = json_data, headers = headers)
+    response = requests.post(url, data = json_data, headers = headers, verify=REQUESTS_SSL_VERIFY)
 
     if response.status_code == 200:
         log.debug("PR data successfully recorded to report (PID: %s)", str(meterian_project_id))
@@ -232,6 +234,9 @@ if __name__ ==  "__main__":
 
     args = parse_args()
     initLogging(args)
+
+    if not REQUESTS_SSL_VERIFY:
+        log.warning("SSL certificate verification by Requests has been disabled via environment variable")
 
     WORK_DIR = args.workdir
     if os.path.exists(WORK_DIR) is False:
@@ -306,7 +311,7 @@ if __name__ ==  "__main__":
         sys.exit(-1)
     
 
-    gitbot_msg_generator = GitbotMessageGenerator()
+    gitbot_msg_generator = GitbotMessageGenerator(requests_ssl_verify=REQUESTS_SSL_VERIFY)
 
     if "PR" == args.action:
         git = GitCli(str(WORK_DIR))

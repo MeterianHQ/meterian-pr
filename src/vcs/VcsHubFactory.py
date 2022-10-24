@@ -18,9 +18,10 @@ class VcsHubFactory:
 
     __log = logging.getLogger("VcsHubFactory")
 
-    def __init__(self, platform: str, api_base_url: str):
+    def __init__(self, platform: str, api_base_url: str, requests_ssl_verify: bool = True):
         self.platform = platform
         self.api_base_url = api_base_url
+        self.requests_ssl_verify = requests_ssl_verify
 
     def create(self) -> VcsHubInterface:
         if self.platform == "github":
@@ -30,7 +31,7 @@ class VcsHubFactory:
             self.__log.debug("Getting auth token on the current environment with env var %s", envvar)
             if envvar in os.environ:
                 try:
-                    pyGithub = PyGithub(os.environ[envvar], base_url=self.api_base_url)
+                    pyGithub = PyGithub(os.environ[envvar], base_url=self.api_base_url, verify=self.requests_ssl_verify)
                     self.__log.debug("Currently authenticated as %s", pyGithub.get_user().login)
                     vcshub = Github(pyGithub)
                     self.__log.debug("Created instace of GitHub %s", vcshub)
@@ -46,7 +47,7 @@ class VcsHubFactory:
             envvar_name = self.PLATFORMS_AND_ENVVARS[self.platform]
             if envvar_name in os.environ:
                 try:
-                    pyGitlab = PyGitlab(self.api_base_url, private_token=os.environ[envvar_name])
+                    pyGitlab = PyGitlab(self.api_base_url, private_token=os.environ[envvar_name], ssl_verify=self.requests_ssl_verify)
                     pyGitlab.auth()
                     self.__log.debug("Gitlab instance created. Currently authenticated as %s", pyGitlab.user.username)
                     return Gitlab(pyGitlab)
