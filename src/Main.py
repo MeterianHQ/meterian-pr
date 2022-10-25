@@ -10,29 +10,27 @@ import requests
 from vcs.IssueSubmitter import IssueSubmitter
 from vcs.GitCli import GitCli
 from vcs.VcsHubFactory import VcsHubFactory
-from vcs.github.GithubRepo import GithubRepo
+# from vcs.github.GithubRepo import GithubRepo
 from vcs.gitlab.GitlabProject import GitlabProject
 from vcs.PullRequestSubmitter import PullRequestSubmitter
 from gitbot.GitbotMessageGenerator import GitbotMessageGenerator
 from vcs.CommitAuthor import CommitAuthor
 from pathlib import Path
-from github import MainClass
+# from github import MainClass
 from gitlab.const import DEFAULT_URL
 from typing import List
 from vcs.PrChangesGenerator import PrChangesGenerator
 from vcs.PrChangesGenerator import PrChange
 from datetime import datetime
 
-VCS_PLATFORMS = [ "github", "gitlab" ] #, "bitbucket" ]
+VCS_PLATFORMS = [ "gitlab" ] #, "bitbucket" ]
 
 DEFAULT_AUTHORS_BY_PLATFORM = {
-    "github": GithubRepo.DEFAULT_COMMITTER,
     "gitlab": GitlabProject.DEFAULT_COMMITTER
     # ,"bitbucket": BitbucketRepo.DEFAULT_COMMITTER_DATA
 }
 
 DEFAULT_API_BASE_URL_BY_PLATFORM = {
-    "github": MainClass.DEFAULT_BASE_URL,
     "gitlab": DEFAULT_URL
 }
 
@@ -72,9 +70,9 @@ def parse_args():
     parser.add_argument(
         "-v",
         "--vcs",
-        default="github",
+        default="gitlab",
         metavar="PLATFORM",
-        help="The version control system platform where your repository is hosted\n (i.e. github) (default is github) (supported: " + str(VCS_PLATFORMS) + ")"
+        help="The version control system platform where your repository is hosted\n (i.e. gitlab) (default is gitlab) (supported: " + str(VCS_PLATFORMS) + ")"
     )
 
     parser.add_argument(

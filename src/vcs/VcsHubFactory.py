@@ -3,8 +3,8 @@ import os
 import logging
 
 from .VcsHubInterface import VcsHubInterface
-from .github.Github import Github
-from github import Github as PyGithub
+# from .github.Github import Github
+# from github import Github as PyGithub
 
 from .gitlab.Gitlab import Gitlab
 from gitlab import Gitlab as PyGitlab
@@ -12,7 +12,7 @@ from gitlab import Gitlab as PyGitlab
 class VcsHubFactory:
 
     PLATFORMS_AND_ENVVARS = {
-        "github": "GITHUB_TOKEN",
+        #"github": "GITHUB_TOKEN",
         "gitlab": "GITLAB_TOKEN"
     }
 
@@ -23,22 +23,22 @@ class VcsHubFactory:
         self.api_base_url = api_base_url
 
     def create(self) -> VcsHubInterface:
-        if self.platform == "github":
-            self.__log.debug("Requested creation of an instance of GitHub")
+        # if self.platform == "github":
+        #     self.__log.debug("Requested creation of an instance of GitHub")
 
-            envvar = self.PLATFORMS_AND_ENVVARS[self.platform]
-            self.__log.debug("Getting auth token on the current environment with env var %s", envvar)
-            if envvar in os.environ:
-                try:
-                    pyGithub = PyGithub(os.environ[envvar], base_url=self.api_base_url)
-                    self.__log.debug("Currently authenticated as %s", pyGithub.get_user().login)
-                    vcshub = Github(pyGithub)
-                    self.__log.debug("Created instace of GitHub %s", vcshub)
-                    return vcshub
-                except:
-                    self.__log.error("Failed to create GitHub instance", exc_info=1)
-            else:
-                self.__log.debug("Github token not found in environment, no instance will be created")
+        #     envvar = self.PLATFORMS_AND_ENVVARS[self.platform]
+        #     self.__log.debug("Getting auth token on the current environment with env var %s", envvar)
+        #     if envvar in os.environ:
+        #         try:
+        #             pyGithub = PyGithub(os.environ[envvar], base_url=self.api_base_url)
+        #             self.__log.debug("Currently authenticated as %s", pyGithub.get_user().login)
+        #             vcshub = Github(pyGithub)
+        #             self.__log.debug("Created instace of GitHub %s", vcshub)
+        #             return vcshub
+        #         except:
+        #             self.__log.error("Failed to create GitHub instance", exc_info=1)
+        #     else:
+        #         self.__log.debug("Github token not found in environment, no instance will be created")
         
         if self.platform == "gitlab":
             self.__log.debug("Requested creation of an instance of GitLab")
