@@ -1,7 +1,7 @@
 import os
 import logging
-import re
 import uuid
+import time
 
 from .PullRequestInterface import PullRequestInterface
 from .RepositoryInterface import RepositoryInterface
@@ -18,6 +18,8 @@ class PullRequestSubmitter:
 
     PR_CONTENT_TITLE_KEY = "title"
     PR_CONTENT_BODY_KEY = "message"
+
+    __COMMIT_RETRY_LIMIT = 10
 
     __log = logging.getLogger("PullRequestSubmitter")
 
@@ -53,7 +55,7 @@ class PullRequestSubmitter:
 
         commit_message = "Autofix"
 
-        were_changes_committed = self.repo.commit_changes(self.author, commit_message, self.branch_helper.as_branch_name(pr_branch_ref), changes)
+        were_changes_committed = self.__do_commit(commit_message, self.branch_helper.as_branch_name(pr_branch_ref), changes)
         if were_changes_committed:
             new_pr = self.repo.create_pull_request(pr_text_content[self.PR_CONTENT_TITLE_KEY], pr_text_content[self.PR_CONTENT_BODY_KEY], self.branch_helper.as_branch_name(pr_branch_ref),
                                                     base_branch, labels)
@@ -107,17 +109,23 @@ class PullRequestSubmitter:
         if the_body or the_title:
             pr.edit(title=the_title, body=the_body)
 
-    def __do_all_commits(self, commit_message: str, branch_name: str, local_changes: list, manifest_path: str, manifest_contents: bytes, pdf_report_path: str, pdf_report_contents: bytes) -> bool:
-        were_changes_committed = self.repo.commit_change(self.author, commit_message, branch_name, manifest_path, manifest_contents)
+    def __do_commit(self, commit_message: str, branch_name: str, changes: List[FilesystemChange]) -> bool:
+        times_retried = 0
+        res = self.repo.commit_changes(self.author, commit_message, branch_name, changes)
+        while res == False and times_retried < self.__COMMIT_RETRY_LIMIT:
+            time.sleep(1)
+            res = self.repo.commit_changes(self.author, commit_message, branch_name, changes)
+            times_retried+=1
 
-        if pdf_report_path:
-            commit_verb = "Update" if pdf_report_path in local_changes else "Add"
-            commit_msg = commit_verb + " " + os.path.basename(pdf_report_path)
-            were_changes_committed |= self.repo.commit_change(self.author, commit_msg, branch_name, pdf_report_path, pdf_report_contents)
+        if res == False and times_retried == self.__COMMIT_RETRY_LIMIT:
+            fs_changes = []
+            for change in changes:
+                fs_changes.append(change.rel_file_path)
 
-        return were_changes_committed
+            self.__log.warning("Maximum retry limit exceeded, failed to commit changes to %s on branch %s", str(fs_changes), branch_name)
 
-#TODO after the new fs changes get passed to the submit function verify that these methods are still needed
+        return res
+
     def __read_file_bytes(self, path: str) -> bytes:
         file = open(path, "rb")
         bytes_contents = file.read()

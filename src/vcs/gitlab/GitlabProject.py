@@ -115,7 +115,7 @@ class GitlabProject(RepositoryInterface):
                 try:
                     res = self.pyGitlabProject.commits.create(payload)
                 except:
-                    self.__log.warning("Unexpected: failed to perform commit", exc_info=1)
+                    self.__log.debug("Unexpected: failed to perform commit", exc_info=1)
 
         return True if res is not None else False
 
@@ -211,7 +211,7 @@ class GitlabProject(RepositoryInterface):
         try:
             return self.pyGitlabProject.files.get(file_path=path, ref=branch)
         except:
-            self.__log.debug("File @ path %s on branch %s of project %s was not found remotely", path, branch, self.get_full_name(), exc_info=1)
+            self.__log.debug("File @ path %s on branch %s of project %s was not found remotely", path, branch, self.get_full_name())
             return None
 
     def __get_remote_branch(self, name: str) -> ProjectBranch:
