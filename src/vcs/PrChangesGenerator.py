@@ -26,8 +26,11 @@ class Dependency():
         }
 
     def __eq__(self, __o: object) -> bool:
-        if self.language == __o.language and self.name == __o.name and self.version == __o.version:
-            return True
+        if isinstance(__o, Dependency):
+            if self.language == __o.language and self.name == __o.name and self.version == __o.version:
+                return True
+            else:
+                return False
         else:
             return False
     
@@ -42,6 +45,18 @@ class FilesystemChange():
         self.rel_file_path = rel_file_path
         self.content = content
 
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, FilesystemChange):
+            if self.rel_file_path == __o.rel_file_path and self.content == __o.content:
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def __hash__(self) -> int:
+        return hash((self.rel_file_path, self.content))
+
     def __str__(self) -> str:
         return "FilesystemChange [ file_path=" + str(self.rel_file_path) + ", content=" + str(self.content) + " ]"
 
@@ -55,6 +70,32 @@ class PrChange():
 
     def set_pr(self, pr: PullRequestInterface):
         self.pr = pr
+
+    def merge(self, other):
+        if other is None:
+            return
+
+        for dep in other.dependencies:
+            if dep not in self.dependencies:
+                self.dependencies.append(dep)
+
+        for fs_change in other.filesystem_changes:
+            if fs_change not in self.filesystem_changes:
+                self.filesystem_changes.append(fs_change)
+
+        changes = self.__get_autofix_changes(self.pr_report)
+        for change in self.__get_autofix_changes(other.pr_report):
+            if change not in changes:
+                changes.append(change)
+
+    def __get_autofix_changes(self, report: dict):
+        if report is None:
+            return []
+
+        if "autofix" in report and "changes" in report["autofix"]:
+            return report["autofix"]["changes"]
+        else:
+            return []
 
     def __str__(self) -> str:
         dependencies_str = '[%s]' % ', '.join(map(str, self.dependencies)) if self.dependencies is not None else 'None'
