@@ -107,7 +107,7 @@ class PrChangesGenerator():
     __logger = logging.getLogger("PrChangesGenerator")
 
     PR_REPORT_FILENAME = ".pr_report.json"
-    __SUPPORTED_MANIFEST_FILES_PATTERNS = [ "pom.xml", "composer.json", "Gemfile", "Gemfile.lock", "Pipfile", "Pipfile.lock", "package.json", "package-lock.json", "^.*\..+proj$" ]
+    __SUPPORTED_MANIFEST_FILES_PATTERNS = [ "pom.xml", "composer.json", "Gemfile", "Gemfile.lock", "Pipfile", "Pipfile.lock", "package.json", "package-lock.json", "^.*\..+proj$", "yarn.lock" ]
 
     def __init__(self, root_folder: Path, git_changes: List[str]) -> None:
         self.root_folder = root_folder
