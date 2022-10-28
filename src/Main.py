@@ -40,6 +40,8 @@ ACTIONS = [ "PR", "ISSUE" ]
 
 WORK_DIR = None
 
+PR_REPORT_FILENAME_PREFIX = ".pr_report_"
+
 VERSION = "1.1.10"
 
 log = logging.getLogger("Main")
@@ -90,7 +92,7 @@ def parse_args():
     parser.add_argument(
         "--group-by-sln",
         action='store_true',
-        help="Allows to open PRs capturing all the changes applied to all the projects listed in a .sln file (note: this option works only with .NET projects)"
+        help="Allows to open PRs capturing all the changes applied to all the projects listed in your .NET .sln files"
     )
 
     parser.add_argument(
@@ -195,13 +197,13 @@ def create_vcs_platform(args):
 
     return vcs
 
-def get_changes_locations(work_dir) -> List[Path]:
+def get_pr_reports(work_dir) -> List[Path]:
     locations = []
     for root, dirs, files in os.walk(work_dir):
-        files = [f for f in files if f == PrChangesGenerator.PR_REPORT_FILENAME]
+        files = [f for f in files if Path(f).name.startswith(PR_REPORT_FILENAME_PREFIX) and Path(f).name.endswith(".json")]
         for file in files:
-            if Path(root) not in locations:
-                locations.append(Path(root))
+            if Path(root, file) not in locations:
+                locations.append(Path(root, file))
     return locations
 
 def record_pr_info_on_report(meterian_project_id: str, pr_infos_by_dep: dict):
@@ -232,13 +234,14 @@ def record_pr_info_on_report(meterian_project_id: str, pr_infos_by_dep: dict):
         print("Failed to record PR data")
         log.error("Could not record PR data\nStatus code: %s\nResponse: %s", str(response.status_code), str(response.text))
 
-def load_summary(dir):
+def load_pr_summary_report(dir) -> dict:
     try:
         stream = open(Path(dir, ".pr_summary.json"), encoding="utf-8")
         pr_report = json.load(stream)
         stream.close()
         return pr_report
     except:
+        log.debug("Unexpected error loading PR summary report %s", str(Path(dir, ".pr_summary.json")), exc_info=1)
         return None
 
 def submit_pr(pr_change: PrChange, branch: str, pr_text_content: dict, meterian_pdf_report_path: str, record_prs: bool, opened_prs: list, pr_infos_by_dep: dict):
@@ -339,89 +342,81 @@ if __name__ ==  "__main__":
         git = GitCli(str(WORK_DIR))
         changes = git.get_changes()
         if changes is None:
-            sys.stderr.write("Git changes detection failed\n")
+            sys.stderr.write("Git changes detection failed\n\n")
             sys.exit(-1)
 
-        changes_locations = get_changes_locations(WORK_DIR)
-        if len(changes_locations) == 0:
-            print("No changes were detected in your repository in order to open PRs")
+        pr_summary = load_pr_summary_report(WORK_DIR)
+        if not pr_summary:
+            sys.stderr.write("Unable to load PR summary report\n\n")
+            sys.exit(-1)
+
+        pr_reports_locations = get_pr_reports(WORK_DIR)
+        if len(pr_reports_locations) == 0:
+            sys.stderr.write("No changes were detected in your repository in order to open PRs\n\n")
             sys.exit(-1)
 
         generator = PrChangesGenerator(Path(WORK_DIR), changes)
 
-        meterian_project_id = None
+        meterian_project_id = pr_summary.get("pid")
         opened_prs = []
         pr_infos_by_dep = {}
         author = get_commit_author_details(args)
         pr_submitter = PullRequestSubmitter(WORK_DIR, remote_repo, author)
 
-        if not args.group_by_sln:
-            for location in changes_locations:
-                pr_change = generator.generate(location)
-                if pr_change:
-                    if meterian_project_id is None:
-                        meterian_project_id = pr_change.meterian_project_id
+        if args.group_by_sln:
+            if len(pr_summary["manifests"]) > 0:
+                for solution in pr_summary["manifests"]:
+                    sln_project_pr_reports = []
+                    for project in solution["projects"]:
+                        location = Path(project["manifest"]["path"]).parent
+                        pr_report = Path(location, PR_REPORT_FILENAME_PREFIX + "dotnet.json")
+                        if pr_report not in sln_project_pr_reports and pr_report in pr_reports_locations:
+                            sln_project_pr_reports.append(pr_report)
 
-                    pr_text_content = generate_contribution_content(gitbot_msg_generator, pr_change.pr_report, {
-                        GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
-                        GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
-                        GitbotMessageGenerator.ISSUE_OPT_KEY: False
-                    }, "issues,licenses")
-                    if not pr_text_content:
-                        sys.stderr.write("Unable to generate the text content for the pull request\n")
-                        sys.stderr.write("\n")
-                        sys.exit(-1)
+                    solution_pr_change = None
+                    for pr_report in sln_project_pr_reports:
+                        pr_change = generator.generate(pr_report)
 
-                    submit_pr(pr_change, args.branch, pr_text_content, meterian_pdf_report_path, record_prs, opened_prs, pr_infos_by_dep)
-        else:
-            pr_summary = load_summary(WORK_DIR)
-            if pr_summary:
-                if len(pr_summary["manifests"]) > 0:
-                    for solution in pr_summary["manifests"]:
-                        solution_project_locations = []
-                        for project in solution["projects"]:
-                            location = Path(project["manifest"]["path"]).parent
-                            if location not in solution_project_locations and location in changes_locations:
-                                solution_project_locations.append(location)
-
-                        solution_pr_change = None
-                        for location in solution_project_locations:
-                            pr_change = generator.generate(location)
-
+                        if pr_change:
                             if solution_pr_change:
                                 solution_pr_change.merge(pr_change)
                             else:
                                 solution_pr_change = pr_change
 
-                        if solution_pr_change:
-                            if meterian_project_id is None:
-                                meterian_project_id = pr_change.meterian_project_id
+                        pr_reports_locations.remove(pr_report)
 
-                            pr_text_content = generate_contribution_content(gitbot_msg_generator, solution_pr_change.pr_report, {
-                                GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
-                                GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
-                                GitbotMessageGenerator.ISSUE_OPT_KEY: False
-                            }, "issues,licenses")
-                            if not pr_text_content:
-                                sys.stderr.write("Unable to generate the text content for the pull request\n")
-                                sys.stderr.write("\n")
-                                sys.exit(-1)
+                    if solution_pr_change:
+                        pr_text_content = generate_contribution_content(gitbot_msg_generator, solution_pr_change.pr_report, {
+                            GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
+                            GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
+                            GitbotMessageGenerator.ISSUE_OPT_KEY: False
+                        }, "issues,licenses")
+                        if not pr_text_content:
+                            log.error("Failed to generate the text content for the pull request, current changes will be skipped")
+                            continue
 
-                            submit_pr(solution_pr_change, args.branch, pr_text_content, meterian_pdf_report_path, record_prs, opened_prs, pr_infos_by_dep)
+                        submit_pr(solution_pr_change, args.branch, pr_text_content, meterian_pdf_report_path, record_prs, opened_prs, pr_infos_by_dep)
 
-                else:
-                    sys.stderr.write("Loaded empty pull request summary report, option --group-by-sln can only be used when dealing with .NET project presenting .sln files\n")
-                    sys.stderr.write("\n")
-                    sys.exit(-1)
-            else:
-                sys.stderr.write("Pull request summary report not found in work directory\n")
-                sys.stderr.write("\n")
-                sys.exit(-1)
+        for pr_report_location in pr_reports_locations:
+            pr_change = generator.generate(pr_report_location)
+            if pr_change:
+                pr_text_content = generate_contribution_content(gitbot_msg_generator, pr_change.pr_report, {
+                    GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
+                    GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
+                    GitbotMessageGenerator.ISSUE_OPT_KEY: False
+                }, "issues,licenses")
+                if not pr_text_content:
+                    log.error("Failed to generate the text content for the pull request, current changes will be skipped")
+                    continue
+
+                submit_pr(pr_change, args.branch, pr_text_content, meterian_pdf_report_path, record_prs, opened_prs, pr_infos_by_dep)
 
         if len(opened_prs) > 0:
             print("New pull requests opened:")
-        for pr in opened_prs:
-            print("- " + pr.get_url())
+            for pr in opened_prs:
+                print("- " + pr.get_url())
+        else:
+            print("No pull requests were opened")
         print()
 
         if record_prs == True:

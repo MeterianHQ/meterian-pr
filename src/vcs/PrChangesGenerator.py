@@ -1,4 +1,3 @@
-import os
 import json
 import re
 import logging
@@ -106,21 +105,21 @@ class PrChangesGenerator():
 
     __logger = logging.getLogger("PrChangesGenerator")
 
-    PR_REPORT_FILENAME = ".pr_report.json"
     __SUPPORTED_MANIFEST_FILES_PATTERNS = [ "pom.xml", "composer.json", "Gemfile", "Gemfile.lock", "Pipfile", "Pipfile.lock", "package.json", "package-lock.json", "^.*\..+proj$", "yarn.lock" ]
 
     def __init__(self, root_folder: Path, git_changes: List[str]) -> None:
         self.root_folder = root_folder
         self.git_changes = git_changes
 
-    def generate(self, location: Path) -> PrChange:
-        if Path(location, self.PR_REPORT_FILENAME).exists:
-            self.__logger.debug("Detected PR report at in %s", self.__relative_path(location))
-            pr_report = self.__load_report_json(Path(location, self.PR_REPORT_FILENAME))
+    def generate(self, pr_report_file: Path) -> PrChange:
+        if pr_report_file.exists():
+            self.__logger.debug("Loading PR report %s", self.__relative_path(pr_report_file))
+            pr_report = self.__load_report_json(pr_report_file)
             if pr_report:
-                if any(location in Path(self.root_folder, fs_change).parents for fs_change in self.git_changes):
-                    self.__logger.debug("Viable changes found in %s, proceeding to generate PR change information...", self.__relative_path(location))
-                    fs_changes = self.__collect_fs_changes(location)
+                changed_manifests = self.__get_manifests(pr_report_file.parent, pr_report)
+                if any(Path(self.root_folder, git_change) in changed_manifests for git_change in self.git_changes):
+                    self.__logger.debug("Viable changes found in %s, proceeding to generate PR change information...", self.__relative_path(pr_report_file.parent))
+                    fs_changes = self.__collect_fs_changes(changed_manifests)
                     dependencies = self.__collect_dependencies(pr_report)
                     project_id = self.__parse_project_id(pr_report)
                     if fs_changes and dependencies and project_id:
@@ -132,10 +131,20 @@ class PrChangesGenerator():
             else:
                 self.__logger.debug("Could not load PR report, generation will be aborted")
         else:
-            self.__logger.debug("No PR report detected in %s", self.__relative_path(location))
+            self.__logger.debug("PR report %s not found", self.__relative_path(pr_report_file))
 
-        self.__logger.error("Failed to generate PR change information for changes detected in %s", self.__relative_path(location))
+        self.__logger.debug("Failed to generate PR change using %s", self.__relative_path(pr_report_file))
         return None
+
+    def __get_manifests(self, dir: Path, pr_report: dict):
+        manifests = []
+        autofix_results = pr_report.get("autofix", {})
+        if autofix_results:
+            for change in autofix_results.get("changes", []):
+                for manifest in change.get("locations", []):
+                    if Path(manifest).parent == dir and Path(manifest) not in manifests:
+                        manifests.append(Path(manifest))
+        return manifests
 
     def __relative_path(self, location: Path) -> str:
         return str(location.relative_to(self.root_folder))
@@ -154,31 +163,11 @@ class PrChangesGenerator():
         # collect autofix dependencies
         deps = []
         for change in pr_report["autofix"]["changes"]:
-            dep = Dependency(None, change["name"], change["version"])
+            dep = Dependency(change["language"], change["name"], change["version"])
             deps.append(dep)
             self.__logger.debug("Collected dependency %s from autofix report", str(dep))
-
-        # adjust dependencies language
-        final_deps = []
-        reports = pr_report["reports"]["licensing"]["reports"]
-        for dep in deps:
-            lang = self.__find_lang(reports, dep)
-            if lang:
-                dep.language = lang
-                final_deps.append(dep)
-                self.__logger.debug("Loaded dependency %s", str(dep))
-            else:
-                self.__logger.warning("Unexpected unable to finalise dependency %s: no language found, will be discarded", str(dep))
             
-        return final_deps if len(final_deps) > 0 else None
-
-    def __find_lang(self, reports, dep):
-        for report in reports:
-            lang = report["language"]
-            for result in report["results"]:
-                if dep.name == result["name"] and dep.version == result["version"]:
-                    return lang
-        return None
+        return deps if len(deps) > 0 else None
 
     def __parse_project_id(self, pr_report: dict) -> str:
         url_str = pr_report.get("url", None)
@@ -190,11 +179,11 @@ class PrChangesGenerator():
             self.__logger.debug("Unable to parse project ID from url %s in PR report ", str(url_str), exc_info=1)
             return None
 
-    def __collect_fs_changes(self, location: Path) -> List[FilesystemChange]:
+    def __collect_fs_changes(self, manifests: List[Path]) -> List[FilesystemChange]:
         try:
             fs_changes = []
             for git_change in self.git_changes:
-                if location in Path(self.root_folder, git_change).parents and self.__is_supported_manifest(Path(self.root_folder, git_change).name):
+                if self.__is_supported_manifest(Path(self.root_folder, git_change).name) and Path(self.root_folder, git_change) in manifests:
                     content = self.__read_file_bytes(str(Path(self.root_folder, git_change).absolute()))
                     fs_changes.append(FilesystemChange(git_change, content))
                     self.__logger.debug("Loaded manifest change for %s", str(git_change))
