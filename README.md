@@ -18,7 +18,7 @@ $ export PATH=$PATH:/path/to/meterian-pr/bin
 
 ### SCM access tokens
 
-As `meterian-pr` supports opening pull requests and issues on GitHub and GitLab repositories you will need export a valid access token in the respective environment variables `GITHUB_TOKEN` and `GITLAB_TOKEN`
+As `meterian-pr` supports opening pull requests and issues on GitHub and GitLab repositories you will need to export a valid access token in the respective environment variables `GITHUB_TOKEN` and `GITLAB_TOKEN`
 
 ```
 $ export GITHUB_TOKEN="ghp_1B4a2e7783***"
