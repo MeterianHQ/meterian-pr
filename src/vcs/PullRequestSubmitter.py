@@ -53,7 +53,7 @@ class PullRequestSubmitter:
             print("Unable to create PR branch %s" % self.branch_helper.as_branch_name(pr_branch_ref))
             return
 
-        commit_message = "Autofix"
+        commit_message = self.__generate_commit_message(pr_change)
 
         were_changes_committed = self.__do_commit(commit_message, self.branch_helper.as_branch_name(pr_branch_ref), changes)
         if were_changes_committed:
@@ -68,6 +68,15 @@ class PullRequestSubmitter:
             self.__log.error("Changes were not committed, unable to proceed with submission")
 
         return pr_change
+
+    def __generate_commit_message(self, pr_change: PrChange):
+        msg = "Autofix"
+        deps = pr_change.dependencies if pr_change.dependencies is not None else []
+        if len(deps) > 0:
+            msg += "\n\n"
+        for dep in deps:
+            msg = "- updated " + dep.name + " from " + dep.version + " to " + dep.new_version + "\n"
+        return msg
 
     def __get_pr_labels(self) -> List[str]:
         label = self.repo.get_pr_label()

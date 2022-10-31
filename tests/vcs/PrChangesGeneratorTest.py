@@ -39,7 +39,7 @@ class PrChangesGeneratorTest(unittest.TestCase):
         pr_change = self.generator.generate(Path(self.test_folder_with_fs_and_pr_report, ".pr_report_dotnet.json"))
 
         self.assertEqual(1, len(pr_change.dependencies))
-        self.assertEqual(Dependency("dotnet", "Hangfire.AspNetCore", "1.7.25"), pr_change.dependencies[0])
+        self.assertEqual(Dependency("dotnet", "Hangfire.AspNetCore", "1.7.25", "1.7.31"), pr_change.dependencies[0])
         self.assertEqual("b407fb0d-abbf-aaaa-aaaa-aaaaaaaaaaaa", pr_change.meterian_project_id)
         self.assertEqual(1, len(pr_change.filesystem_changes))
         self.assertEqual(self.git_changes[1], pr_change.filesystem_changes[0].rel_file_path)

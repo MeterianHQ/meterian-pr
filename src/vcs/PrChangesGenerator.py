@@ -8,10 +8,11 @@ from pathlib import Path
 from .PullRequestInterface import PullRequestInterface
 
 class Dependency():
-    def __init__(self, language: str, name: str, version: str) -> None:
+    def __init__(self, language: str, name: str, version: str, new_version: str) -> None:
         self.language = language
         self.name = name
         self.version = version
+        self.new_version = new_version
 
     def to_payload(self):
         return {
@@ -26,7 +27,7 @@ class Dependency():
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, Dependency):
-            if self.language == __o.language and self.name == __o.name and self.version == __o.version:
+            if self.language == __o.language and self.name == __o.name and self.version == __o.version and self.new_version == __o.new_version:
                 return True
             else:
                 return False
@@ -34,10 +35,10 @@ class Dependency():
             return False
     
     def __hash__(self) -> int:
-        return hash((str(self.language), str(self.name), str(self.version)))
+        return hash((str(self.language), str(self.name), str(self.version), str(self.new_version)))
 
     def __str__(self) -> str:
-        return "Dependency [ language=" + str(self.language) + ", name=" + str(self.name) + ", version=" + str(self.version) + "]"
+        return "Dependency [ language=" + str(self.language) + ", name=" + str(self.name) + ", version=" + str(self.version) + ", new_version=" + str(self.new_version) + "]"
 
 class FilesystemChange():
     def __init__(self, rel_file_path: str, content: bytes) -> None:
@@ -163,7 +164,7 @@ class PrChangesGenerator():
         # collect autofix dependencies
         deps = []
         for change in pr_report["autofix"]["changes"]:
-            dep = Dependency(change["language"], change["name"], change["version"])
+            dep = Dependency(change["language"], change["name"], change["version"], change["upgradedTo"])
             deps.append(dep)
             self.__logger.debug("Collected dependency %s from autofix report", str(dep))
             

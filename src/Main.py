@@ -42,7 +42,7 @@ WORK_DIR = None
 
 PR_REPORT_FILENAME_PREFIX = ".pr_report_"
 
-VERSION = "1.1.10"
+VERSION = "1.1.12"
 
 log = logging.getLogger("Main")
 
