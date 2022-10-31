@@ -75,7 +75,7 @@ class PullRequestSubmitter:
         if len(deps) > 0:
             msg += "\n\n"
         for dep in deps:
-            msg = "- updated " + dep.name + " from " + dep.version + " to " + dep.new_version + "\n"
+            msg += "- updated " + dep.name + " from " + dep.version + " to " + dep.new_version + "\n"
         return msg
 
     def __get_pr_labels(self) -> List[str]:
