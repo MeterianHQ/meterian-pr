@@ -364,42 +364,51 @@ if __name__ ==  "__main__":
         pr_submitter = PullRequestSubmitter(WORK_DIR, remote_repo, author)
 
         if args.group_by_sln:
-            if len(pr_summary["manifests"]) > 0:
-                for solution in pr_summary["manifests"]:
-                    sln_project_pr_reports = []
+            for solution in pr_summary["manifests"]:
+                sln_project_pr_reports = []
+                language = solution.get("language", None)
+                fix_type = solution.get("type", None)
+                if language and fix_type and language == "dotnet" and fix_type == "bysln":
                     for project in solution["projects"]:
                         location = Path(project["manifest"]["path"]).parent
                         pr_report = Path(location, PR_REPORT_FILENAME_PREFIX + "dotnet.json")
                         if pr_report not in sln_project_pr_reports and pr_report in pr_reports_locations:
                             sln_project_pr_reports.append(pr_report)
 
-                    solution_pr_change = None
-                    for pr_report in sln_project_pr_reports:
-                        pr_change = generator.generate(pr_report)
+                solution_pr_change = None
+                for pr_report in sln_project_pr_reports:
+                    pr_change = generator.generate(pr_report)
 
-                        if pr_change:
-                            if solution_pr_change:
-                                solution_pr_change.merge(pr_change)
-                            else:
-                                solution_pr_change = pr_change
+                    if pr_change:
+                        if solution_pr_change:
+                            solution_pr_change.merge(pr_change)
+                        else:
+                            solution_pr_change = pr_change
 
-                        pr_reports_locations.remove(pr_report)
+                    pr_reports_locations.remove(pr_report)
 
-                    if solution_pr_change:
-                        pr_text_content = generate_contribution_content(gitbot_msg_generator, solution_pr_change.pr_report, {
-                            GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
-                            GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
-                            GitbotMessageGenerator.ISSUE_OPT_KEY: False
-                        }, "issues,licenses")
-                        if not pr_text_content:
-                            log.error("Failed to generate the text content for the pull request, current changes will be skipped")
-                            continue
+                if solution_pr_change:
+                    if logging.DEBUG == log.level:
+                        try:
+                            log.debug("For solution %s, following PR change was generated: %s", str(solution["solution"]["path"]), str(solution_pr_change))
+                        except:
+                            pass
 
-                        submit_pr(solution_pr_change, args.branch, pr_text_content, meterian_pdf_report_path, record_prs, opened_prs, pr_infos_by_dep)
+                    pr_text_content = generate_contribution_content(gitbot_msg_generator, solution_pr_change.pr_report, {
+                        GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
+                        GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
+                        GitbotMessageGenerator.ISSUE_OPT_KEY: False
+                    }, "issues,licenses")
+                    if not pr_text_content:
+                        log.error("Failed to generate the text content for the pull request, current changes will be skipped")
+                        continue
+
+                    submit_pr(solution_pr_change, args.branch, pr_text_content, meterian_pdf_report_path, record_prs, opened_prs, pr_infos_by_dep)
 
         for pr_report_location in pr_reports_locations:
             pr_change = generator.generate(pr_report_location)
             if pr_change:
+                log.debug("For PR report %s, following PR change was generated: %s", str(pr_report_location), str(pr_change))
                 pr_text_content = generate_contribution_content(gitbot_msg_generator, pr_change.pr_report, {
                     GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
                     GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
