@@ -42,7 +42,7 @@ WORK_DIR = None
 
 PR_REPORT_FILENAME_PREFIX = ".pr_report_"
 
-VERSION = "1.1.12"
+VERSION = "1.1.13"
 
 log = logging.getLogger("Main")
 
@@ -87,12 +87,6 @@ def parse_args():
         "--record-prs",
         action='store_true',
         help="Allows to record information about pull requests opened on the Meterian report (note: a valid Meterian authentication token must be set in the environment)"
-    )
-
-    parser.add_argument(
-        "--group-by-sln",
-        action='store_true',
-        help="Allows to open PRs capturing all the changes applied to all the projects listed in your .NET .sln files"
     )
 
     parser.add_argument(
@@ -196,15 +190,6 @@ def create_vcs_platform(args):
     vcs = VcsHubFactory(args.vcs, api_base_url).create()
 
     return vcs
-
-def get_pr_reports(work_dir) -> List[Path]:
-    locations = []
-    for root, dirs, files in os.walk(work_dir):
-        files = [f for f in files if Path(f).name.startswith(PR_REPORT_FILENAME_PREFIX) and Path(f).name.endswith(".json")]
-        for file in files:
-            if Path(root, file) not in locations:
-                locations.append(Path(root, file))
-    return locations
 
 def record_pr_info_on_report(meterian_project_id: str, pr_infos_by_dep: dict):
     print("Recording PR information to report")
@@ -339,76 +324,25 @@ if __name__ ==  "__main__":
     gitbot_msg_generator = GitbotMessageGenerator()
 
     if "PR" == args.action:
-        git = GitCli(str(WORK_DIR))
-        changes = git.get_changes()
-        if changes is None:
-            sys.stderr.write("Git changes detection failed\n\n")
-            sys.exit(-1)
-
-        pr_summary = load_pr_summary_report(WORK_DIR)
-        if not pr_summary:
-            sys.stderr.write("Unable to load PR summary report\n\n")
-            sys.exit(-1)
-
-        pr_reports_locations = get_pr_reports(WORK_DIR)
-        if len(pr_reports_locations) == 0:
+        reports_and_changes = PrChangesGenerator.fetch_changed_manifests(Path(WORK_DIR))
+        if len(reports_and_changes) == 0:
             sys.stderr.write("No changes were detected in your repository in order to open PRs\n\n")
             sys.exit(-1)
 
-        generator = PrChangesGenerator(Path(WORK_DIR), changes)
-
-        meterian_project_id = pr_summary.get("pid")
+        a_report = list(reports_and_changes.keys())[0]
+        meterian_project_id = PrChangesGenerator.parse_pid(a_report)
         opened_prs = []
         pr_infos_by_dep = {}
         author = get_commit_author_details(args)
         pr_submitter = PullRequestSubmitter(WORK_DIR, remote_repo, author)
 
-        if args.group_by_sln:
-            for solution in pr_summary["manifests"]:
-                sln_project_pr_reports = []
-                language = solution.get("language", None)
-                fix_type = solution.get("type", None)
-                if language and fix_type and language == "dotnet" and fix_type == "bysln":
-                    for project in solution["projects"]:
-                        location = Path(project["manifest"]["path"]).parent
-                        pr_report = Path(location, PR_REPORT_FILENAME_PREFIX + "dotnet.json")
-                        if pr_report not in sln_project_pr_reports and pr_report in pr_reports_locations:
-                            sln_project_pr_reports.append(pr_report)
+        for pr_report_path, changes in reports_and_changes.items():
+            log.debug("Prepping PR with report %s and changes %s", pr_report_path, changes)
 
-                solution_pr_change = None
-                for pr_report in sln_project_pr_reports:
-                    pr_change = generator.generate(pr_report)
+            generator = PrChangesGenerator(Path(WORK_DIR), changes)
+            pr_change = generator.generate(pr_report_path)
 
-                    if pr_change:
-                        if solution_pr_change:
-                            solution_pr_change.merge(pr_change)
-                        else:
-                            solution_pr_change = pr_change
-
-                    pr_reports_locations.remove(pr_report)
-
-                if solution_pr_change:
-                    if logging.DEBUG == log.level:
-                        try:
-                            log.debug("For solution %s, following PR change was generated: %s", str(solution["solution"]["path"]), str(solution_pr_change))
-                        except:
-                            pass
-
-                    pr_text_content = generate_contribution_content(gitbot_msg_generator, solution_pr_change.pr_report, {
-                        GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
-                        GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
-                        GitbotMessageGenerator.ISSUE_OPT_KEY: False
-                    }, "issues,licenses")
-                    if not pr_text_content:
-                        log.error("Failed to generate the text content for the pull request, current changes will be skipped")
-                        continue
-
-                    submit_pr(solution_pr_change, args.branch, pr_text_content, meterian_pdf_report_path, record_prs, opened_prs, pr_infos_by_dep)
-
-        for pr_report_location in pr_reports_locations:
-            pr_change = generator.generate(pr_report_location)
             if pr_change:
-                log.debug("For PR report %s, following PR change was generated: %s", str(pr_report_location), str(pr_change))
                 pr_text_content = generate_contribution_content(gitbot_msg_generator, pr_change.pr_report, {
                     GitbotMessageGenerator.AUTOFIX_OPT_KEY: True,
                     GitbotMessageGenerator.REPORT_OPT_KEY: bool(args.with_pdf_report),
@@ -418,6 +352,7 @@ if __name__ ==  "__main__":
                     log.error("Failed to generate the text content for the pull request, current changes will be skipped")
                     continue
 
+                log.debug("Opening PR via PR change %s", pr_change)
                 submit_pr(pr_change, args.branch, pr_text_content, meterian_pdf_report_path, record_prs, opened_prs, pr_infos_by_dep)
 
         if len(opened_prs) > 0:
@@ -429,7 +364,10 @@ if __name__ ==  "__main__":
         print()
 
         if record_prs == True:
-            record_pr_info_on_report(meterian_project_id, pr_infos_by_dep)
+            if meterian_project_id:
+                record_pr_info_on_report(meterian_project_id, pr_infos_by_dep)
+            else:
+                log.error("Unexpected: report ID is unknown, no PR information can be recorded")
     
 
     if "ISSUE" == args.action:
