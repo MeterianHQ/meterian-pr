@@ -1,6 +1,7 @@
 import json
 import re
 import logging
+import os
 
 from urllib import parse
 from typing import List
@@ -106,29 +107,31 @@ class PrChangesGenerator():
 
     __logger = logging.getLogger("PrChangesGenerator")
 
-    __SUPPORTED_MANIFEST_FILES_PATTERNS = [ "pom.xml", "composer.json", "Gemfile", "Gemfile.lock", "Pipfile", "Pipfile.lock", "package.json", "package-lock.json", "^.*\..+proj$", "yarn.lock" ]
+    METERIAN_PR_FILE_REGEX = r".*\.pr\d+$"
 
-    def __init__(self, root_folder: Path, git_changes: List[str]) -> None:
+    METERIAN_PR_REPORT_FILE_REGEX = r"^report\.json\.pr\d+$"
+
+    SUPPORTED_MANIFEST_FILES_PATTERNS = [ "^pom\.xml$", "^composer\.json$", "^Gemfile$", "^Gemfile\.lock$", "^Pipfile$", "^Pipfile\.lock$", "^package\.json$", "^package-lock\.json$", "^.*\..+proj$", "^yarn\.lock$" ]
+
+    def __init__(self, root_folder: Path, relative_changes_paths: List[str]) -> None:
         self.root_folder = root_folder
-        self.git_changes = git_changes
+        self.relative_changes_paths = relative_changes_paths
 
     def generate(self, pr_report_file: Path) -> PrChange:
         if pr_report_file.exists():
             self.__logger.debug("Loading PR report %s", self.__relative_path(pr_report_file))
-            pr_report = self.__load_report_json(pr_report_file)
+            pr_report = PrChangesGenerator.__load_report_json(pr_report_file)
+            self.__logger.debug("Loaded PR report.")
             if pr_report:
-                changed_manifests = self.__get_manifests(pr_report_file.parent, pr_report)
-                if any(Path(self.root_folder, git_change) in changed_manifests for git_change in self.git_changes):
-                    self.__logger.debug("Viable changes found in %s, proceeding to generate PR change information...", self.__relative_path(pr_report_file.parent))
-                    fs_changes = self.__collect_fs_changes(changed_manifests)
-                    dependencies = self.__collect_dependencies(pr_report)
-                    project_id = self.__parse_project_id(pr_report)
-                    if fs_changes and dependencies and project_id:
-                        pr_change = PrChange(project_id, dependencies, fs_changes, pr_report)
-                        self.__logger.debug("Generated PR change %s", str(pr_change))
-                        return pr_change
-                    else:
-                        self.__logger.debug("Incomplete data collected for PR change, generation will be aborted")
+                fs_changes = self.__collect_fs_changes()
+                dependencies = self.__collect_dependencies(pr_report)
+                project_id = PrChangesGenerator.__parse_project_id(pr_report)
+                if fs_changes and dependencies and project_id:
+                    pr_change = PrChange(project_id, dependencies, fs_changes, pr_report)
+                    self.__logger.debug("Generated PR change %s", str(pr_change))
+                    return pr_change
+                else:
+                    self.__logger.debug("Incomplete data collected for PR change, generation will be aborted")
             else:
                 self.__logger.debug("Could not load PR report, generation will be aborted")
         else:
@@ -137,28 +140,11 @@ class PrChangesGenerator():
         self.__logger.debug("Failed to generate PR change using %s", self.__relative_path(pr_report_file))
         return None
 
-    def __get_manifests(self, dir: Path, pr_report: dict):
-        manifests = []
-        autofix_results = pr_report.get("autofix", {})
-        if autofix_results:
-            for change in autofix_results.get("changes", []):
-                for manifest in change.get("locations", []):
-                    if Path(manifest).parent == dir and Path(manifest) not in manifests:
-                        manifests.append(Path(manifest))
-        return manifests
-
     def __relative_path(self, location: Path) -> str:
-        return str(location.relative_to(self.root_folder))
+        return str(PrChangesGenerator.__compute_relative_path(self.root_folder, location))
 
-    def __load_report_json(self, path: Path) -> dict:
-        try:
-            stream = open(path, encoding="utf-8")
-            pr_report = json.load(stream)
-            stream.close()
-            return pr_report
-        except:
-            self.__logger.debug("Unable to load PR report at %s", str(path), exc_info=1)
-            return None
+    def __compute_relative_path(root_folder: Path, location: Path) -> Path:
+        return location.relative_to(root_folder)
 
     def __collect_dependencies(self, pr_report: dict) -> List[Dependency]:
         # collect autofix dependencies
@@ -170,33 +156,30 @@ class PrChangesGenerator():
             
         return deps if len(deps) > 0 else None
 
-    def __parse_project_id(self, pr_report: dict) -> str:
-        url_str = pr_report.get("url", None)
-        try:
-            url = parse.urlparse(url_str)
-            query_str = parse.parse_qs(url.query)
-            return query_str["pid"][0]
-        except:
-            self.__logger.debug("Unable to parse project ID from url %s in PR report ", str(url_str), exc_info=1)
-            return None
-
-    def __collect_fs_changes(self, manifests: List[Path]) -> List[FilesystemChange]:
+    def __collect_fs_changes(self) -> List[FilesystemChange]:
         try:
             fs_changes = []
-            for git_change in self.git_changes:
-                if self.__is_supported_manifest(Path(self.root_folder, git_change).name) and Path(self.root_folder, git_change) in manifests:
-                    content = self.__read_file_bytes(str(Path(self.root_folder, git_change).absolute()))
-                    fs_changes.append(FilesystemChange(git_change, content))
-                    self.__logger.debug("Loaded manifest change for %s", str(git_change))
+            for rel_change in self.relative_changes_paths:
+                if PrChangesGenerator.__is_supported_manifest(Path(self.root_folder, PrChangesGenerator.__without_pr_file_extension(rel_change)).name):
+                    content = self.__read_file_bytes(str(Path(self.root_folder, rel_change).absolute()))
+                    fs_changes.append(FilesystemChange(PrChangesGenerator.__without_pr_file_extension(rel_change), content))
+                    self.__logger.debug("Loaded manifest change for %s", str(rel_change))
             return fs_changes
         except:
-            self.__logger.debug("Unable to collect filesystem changes in %s", self.__relative_path(location), exc_info=1)
+            self.__logger.debug("Unable to collect filesystem changes from files %s", self.relative_changes_paths, exc_info=1)
             return None
 
-    def __is_supported_manifest(self, file_name: str) -> bool:
+    def __without_pr_file_extension(filename: str):
+        pr_no = PrChangesGenerator.__parse_pr_no(Path(filename))
+        if pr_no:
+            return filename.replace("."+pr_no, "")
+        else:
+            return filename
+
+    def __is_supported_manifest(file_name: str) -> bool:
         res = False
 
-        for pattern in self.__SUPPORTED_MANIFEST_FILES_PATTERNS:
+        for pattern in PrChangesGenerator.SUPPORTED_MANIFEST_FILES_PATTERNS:
             if re.match(pattern, file_name):
                 res = True
                 break
@@ -208,3 +191,79 @@ class PrChangesGenerator():
         bytes_contents = file.read()
         file.close()
         return bytes_contents
+
+    def fetch_changed_manifests(root_dir: Path) -> dict:
+        '''
+        returns map with key(Path(pr_report)), value(List[str(file changes paths relative to root_dir)])
+        '''
+        manifests_by_pr_reports = {}
+        reports = PrChangesGenerator.__fetch_pr_reports(root_dir)
+        PrChangesGenerator.__logger.debug("Found PR reports to work on %s", str(reports))
+        for report in reports:
+            pr_no = PrChangesGenerator.__parse_pr_no(report)
+            if pr_no:
+                manifests_by_pr_reports[report] = PrChangesGenerator.__find_changed_manifests(root_dir, pr_no)
+
+        PrChangesGenerator.__logger.debug("Fetched changed manifest by pr reports: %s", manifests_by_pr_reports)
+        return manifests_by_pr_reports
+
+
+    def __parse_pr_no(file: Path):
+        pr_no = None
+        if re.match(PrChangesGenerator.METERIAN_PR_FILE_REGEX, file.name):
+            last_index_of_dot = file.name.rfind('.')
+            if last_index_of_dot != -1:
+                pr_no = file.name[last_index_of_dot+1:]
+        return pr_no
+
+    def __fetch_pr_reports(work_dir: Path) -> List[Path]:
+        PrChangesGenerator.__logger.debug("Fetching PR reports in %s", str(work_dir))
+        reports = []
+        for filename in os.listdir(work_dir):
+            PrChangesGenerator.__logger.debug("Checking %s", filename)
+            if os.path.isfile(Path(work_dir,filename)) and re.match(PrChangesGenerator.METERIAN_PR_REPORT_FILE_REGEX, filename):
+                reports.append(Path(work_dir, filename))
+                PrChangesGenerator.__logger.debug("Loaded report @ %s", str(Path(work_dir, filename)))
+        return reports
+
+    def __find_changed_manifests(work_dir: Path, pr_no: str) -> List[str]:
+        manifests = []
+        for root, dirs, files in os.walk(work_dir):
+            files = [f for f in files if f.endswith("."+pr_no)]
+            for file in files:
+                manifest_file = file.replace("."+pr_no, "");
+                if PrChangesGenerator.__is_supported_manifest(manifest_file):
+                    manifest = Path(root, file)
+                    entry = str(PrChangesGenerator.__compute_relative_path(work_dir, manifest))
+                    if entry not in manifests:
+                        manifests.append(entry)
+        return manifests
+
+    def __load_report_json(path: Path) -> dict:
+        try:
+            stream = open(path, encoding="utf-8")
+            pr_report = json.load(stream)
+            stream.close()
+            return pr_report
+        except:
+            PrChangesGenerator.__logger.debug("Unable to load PR report at %s", str(path), exc_info=1)
+            return None
+
+    def __parse_project_id(pr_report: dict) -> str:
+        url_str = pr_report.get("url", None)
+        try:
+            url = parse.urlparse(url_str)
+            query_str = parse.parse_qs(url.query)
+            return query_str["pid"][0]
+        except:
+            PrChangesGenerator.__logger.debug("Unable to parse project ID from url %s in PR report ", str(url_str), exc_info=1)
+            return None
+
+    def parse_pid(a_report: Path) -> str:
+        pid = None
+
+        report = PrChangesGenerator.__load_report_json(a_report)
+        if report:
+            pid = PrChangesGenerator.__parse_project_id(report)
+
+        return pid

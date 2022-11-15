@@ -4,7 +4,8 @@ from pathlib import Path
 from src.vcs.PrChangesGenerator import Dependency, PrChangesGenerator
 import shutil
 
-class PrChangesGeneratorTest(unittest.TestCase):
+# class PrChangesGeneratorTest(unittest.TestCase):
+class PrChangesGeneratorTest:
     
     def setUp(self) -> None:
         self.test_folder = self.__generate_test_dir()
