@@ -44,6 +44,8 @@ PR_REPORT_FILENAME_PREFIX = ".pr_report_"
 
 VERSION = "1.1.13"
 
+METERIAN_ENV = os.environ["METERIAN_ENV"] if "METERIAN_ENV" in os.environ else "www"
+
 log = logging.getLogger("Main")
 
 class HelpingParser(argparse.ArgumentParser):
@@ -209,7 +211,7 @@ def record_pr_info_on_report(meterian_project_id: str, pr_infos_by_dep: dict):
     log.debug("Recording data...")
     meterian_token = os.environ.get("METERIAN_API_TOKEN", None)
     headers = {"Content-Type": "application/json", "Authorization": "token " + str(meterian_token)}
-    url = "https://www.meterian.com/api/v1/reports/" + meterian_project_id + "/prs"
+    url = "https://" + METERIAN_ENV + ".meterian.com/api/v1/reports/" + meterian_project_id + "/prs"
     response = requests.post(url, data = json_data, headers = headers)
 
     if response.status_code == 200:
