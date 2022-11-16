@@ -234,7 +234,7 @@ def load_pr_summary_report(dir) -> dict:
 def submit_pr(pr_change: PrChange, branch: str, pr_text_content: dict, meterian_pdf_report_path: str, record_prs: bool, opened_prs: list, pr_infos_by_dep: dict):
     pr_change = pr_submitter.submit(pr_text_content, pr_change, branch, meterian_pdf_report_path)
     if pr_change.pr:
-        opened_prs.append(pr_change.pr)
+        opened_prs.append(pr_change)
 
         if record_prs == True:
             for dependency in pr_change.dependencies:
@@ -359,8 +359,9 @@ if __name__ ==  "__main__":
 
         if len(opened_prs) > 0:
             print("New pull requests opened:")
-            for pr in opened_prs:
-                print("- " + pr.get_url())
+            for pr_change in opened_prs:
+                dep = pr_change.dependencies[0]
+                print("- " + pr_change.pr.get_url() + " - " + "fixes " + dep.language + "/" + dep.name)
         else:
             print("No pull requests were opened")
         print()
