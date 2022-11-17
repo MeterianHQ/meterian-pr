@@ -38,6 +38,12 @@ class Dependency():
     def __hash__(self) -> int:
         return hash((str(self.language), str(self.name), str(self.version), str(self.new_version)))
 
+    def __lt__(self, other):
+        return (self.name+self.version) < (other.name+other.version)
+
+    def __gt__(self, other):
+        return (self.name+self.version) > (other.name+other.version)
+
     def __str__(self) -> str:
         return "Dependency [ language=" + str(self.language) + ", name=" + str(self.name) + ", version=" + str(self.version) + ", new_version=" + str(self.new_version) + "]"
 
@@ -58,15 +64,22 @@ class FilesystemChange():
     def __hash__(self) -> int:
         return hash((self.rel_file_path, self.content))
 
+    def __lt__(self, other):
+        return self.rel_file_path < other.rel_file_path
+
+    def __gt__(self, other):
+        return self.rel_file_path > other.rel_file_path
+
     def __str__(self) -> str:
         return "FilesystemChange [ file_path=" + str(self.rel_file_path) + ", content=" + str(self.content) + " ]"
 
 class PrChange():
-    def __init__(self,  meterian_project_id: str, dependencies : List[Dependency], filesystem_changes: List[FilesystemChange], pr_report: dict, pr: PullRequestInterface = None) -> None:
+    def __init__(self,  meterian_project_id: str, dependencies : List[Dependency], filesystem_changes: List[FilesystemChange], pr_report: dict, manifest_info: dict, pr: PullRequestInterface = None) -> None:
         self.meterian_project_id = meterian_project_id
         self.dependencies = dependencies
         self.filesystem_changes = filesystem_changes
         self.pr_report = pr_report
+        self.manifest_info = manifest_info
         self.pr = pr
 
     def set_pr(self, pr: PullRequestInterface):
@@ -127,7 +140,8 @@ class PrChangesGenerator():
                 dependencies = self.__collect_dependencies(pr_report)
                 project_id = PrChangesGenerator.__parse_project_id(pr_report)
                 if fs_changes and dependencies and project_id:
-                    pr_change = PrChange(project_id, dependencies, fs_changes, pr_report)
+                    manifest_info = self.__get_manifest_info(pr_report)
+                    pr_change = PrChange(project_id, dependencies, fs_changes, pr_report, manifest_info)
                     self.__logger.debug("Generated PR change %s", str(pr_change))
                     return pr_change
                 else:
@@ -138,6 +152,15 @@ class PrChangesGenerator():
             self.__logger.debug("PR report %s not found", self.__relative_path(pr_report_file))
 
         self.__logger.debug("Failed to generate PR change using %s", self.__relative_path(pr_report_file))
+        return None
+
+    def __get_manifest_info(self, pr_report):
+        if "autofix" in pr_report:
+            if "manifests" in pr_report["autofix"]:
+                manifests = pr_report["autofix"]["manifests"]
+                if manifests:
+                    if len(manifests) > 0:
+                        return manifests[0]
         return None
 
     def __relative_path(self, location: Path) -> str:

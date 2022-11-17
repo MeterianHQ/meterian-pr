@@ -95,6 +95,7 @@ optional arguments:
   --api-base-url URL    Allows to override the API base URL for the chosen version control system platform
   --record-prs          Allows to record information about pull requests opened on the Meterian report (note: a valid Meterian authentication token must be set in
                         the environment)
+  --always-open-prs     By default identical pull requests are not opened, with this flag you can override this behaviour to always open PRs
   --json-report PATH    Allows to specify the path to the Meterian JSON report. This option is required if 'ISSUE' is the action being used (view help for more
                         details on actions)
   --with-pdf-report PATH

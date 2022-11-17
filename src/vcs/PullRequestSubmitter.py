@@ -1,7 +1,7 @@
-import os
 import logging
 import uuid
 import time
+import hashlib
 
 from .PullRequestInterface import PullRequestInterface
 from .RepositoryInterface import RepositoryInterface
@@ -23,13 +23,14 @@ class PullRequestSubmitter:
 
     __log = logging.getLogger("PullRequestSubmitter")
 
-    def __init__(self, workdir:str, repository: RepositoryInterface, author: CommitAuthor):
+    def __init__(self, workdir:str, repository: RepositoryInterface, author: CommitAuthor, always_open_prs: bool = False):
         self.workdir = workdir
         self.repo = repository
         self.branch_helper = BranchHelper()
         self.author = author
+        self.always_open_prs = always_open_prs
 
-    def submit(self, pr_text_content: dict, pr_change: PrChange, base_branch: str, pdf_report_path: str = None):
+    def submit(self, pr_text_content: dict, pr_change: PrChange, base_branch: str, pdf_report_path: str = None) -> PrChange:
         if self.__log.level == logging.DEBUG:
             self.__log.debug("Changes detected were:")
             for fs_change in pr_change.filesystem_changes:
@@ -44,14 +45,20 @@ class PullRequestSubmitter:
             self.__log.debug("Read contents of PDF report %s", pdf_report_path)
             changes.append(FilesystemChange(pdf_report_path, pdf_report_contents))
 
-        pr_branch_ref = self.__create_pr_branch_ref(base_branch)
+        pr_branch_ref = self.__create_pr_branch_ref(base_branch, pr_change)
         if pr_branch_ref is None:
             print(f"Invalid branch ref was generated ({pr_branch_ref}), hence no PR will be will be opened")
-            return
+            return None
 
         if not self.repo.create_branch(base_branch, self.branch_helper.as_branch_name(pr_branch_ref)):
             print("Unable to create PR branch %s" % self.branch_helper.as_branch_name(pr_branch_ref))
-            return
+            return None
+
+        opened_prs = self.__get_pulls(self.repo.get_owner(), self.branch_helper.as_branch_name(pr_branch_ref), base_branch, self.repo.get_open_pulls)
+        closed_prs = self.__get_pulls(self.repo.get_owner(), self.branch_helper.as_branch_name(pr_branch_ref), base_branch, self.repo.get_closed_pulls)
+        if len(opened_prs) > 0 or len(closed_prs) > 0:
+            self.__log.debug("Pull request for PR change %s has already been opened", str(pr_change))
+            return None
 
         commit_message = self.__generate_commit_message(pr_change)
 
@@ -67,7 +74,10 @@ class PullRequestSubmitter:
         else:
             self.__log.error("Changes were not committed, unable to proceed with submission")
 
-        return pr_change
+        if pr_change.pr:
+            return pr_change
+        else:
+            return None
 
     def __generate_commit_message(self, pr_change: PrChange):
         msg = "Autofix"
@@ -141,13 +151,37 @@ class PullRequestSubmitter:
         file.close()
         return bytes_contents
 
-    def __create_pr_branch_ref(self, base_branch: str) -> str:
+    def __create_pr_branch_ref(self, base_branch: str, pr_change: PrChange) -> str:
         pr_branch_name = self.PR_BRANCH_NAME_PREFIX
         if base_branch != self.repo.get_default_branch():
             pr_branch_name = base_branch + "_" + pr_branch_name
 
-        pr_branch_name += str(uuid.uuid4())
+        pr_branch_name += self.__generate_uuid(pr_change)
         pr_branch_name = self.branch_helper.to_branch_ref(pr_branch_name)
 
         self.__log.debug("Generated PR branch ref %s", str(pr_branch_name))
         return pr_branch_name
+
+    def __generate_uuid(self, pr_change: PrChange) -> str:
+        if self.always_open_prs:
+            return str(uuid.uuid4())
+
+        deps_seed = ""
+        deps = pr_change.dependencies
+        deps.sort()
+        for dep in deps:
+            deps_seed += dep.name+dep.version
+
+        manifests_seed = b''
+        manifests = pr_change.filesystem_changes
+        manifests.sort()
+        for manifest in manifests:
+            manifests_seed += manifest.content
+
+        seed = deps_seed.encode("utf-8")+manifests_seed
+        if pr_change.manifest_info:
+            seed += Path(pr_change.manifest_info["solution"]["path"]).name.encode("utf-8")
+
+        m = hashlib.md5()
+        m.update(seed)
+        return str(uuid.UUID(m.hexdigest()))

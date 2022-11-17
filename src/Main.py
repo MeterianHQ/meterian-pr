@@ -92,6 +92,12 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--always-open-prs",
+        action='store_true',
+        help="By default identical pull requests are not opened, with this flag you can override this behaviour to always open PRs"
+    )
+
+    parser.add_argument(
         "--json-report",
         metavar="PATH",
         help="Allows to specify the path to the Meterian JSON report. This option is required if 'ISSUE' is the action being used (view help for more details on actions)"
@@ -233,7 +239,7 @@ def load_pr_summary_report(dir) -> dict:
 
 def submit_pr(pr_change: PrChange, branch: str, pr_text_content: dict, meterian_pdf_report_path: str, record_prs: bool, opened_prs: list, pr_infos_by_dep: dict):
     pr_change = pr_submitter.submit(pr_text_content, pr_change, branch, meterian_pdf_report_path)
-    if pr_change.pr:
+    if pr_change:
         opened_prs.append(pr_change)
 
         if record_prs == True:
@@ -336,7 +342,8 @@ if __name__ ==  "__main__":
         opened_prs = []
         pr_infos_by_dep = {}
         author = get_commit_author_details(args)
-        pr_submitter = PullRequestSubmitter(WORK_DIR, remote_repo, author)
+        always_open_prs = args.always_open_prs is not None and args.always_open_prs == True
+        pr_submitter = PullRequestSubmitter(WORK_DIR, remote_repo, author, always_open_prs)
 
         for pr_report_path, changes in reports_and_changes.items():
             log.debug("Prepping PR with report %s and changes %s", pr_report_path, changes)

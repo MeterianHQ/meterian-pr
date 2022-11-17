@@ -8,13 +8,15 @@ class PrChangeTest(unittest.TestCase):
             "uuid",
             [ Dependency("dotnet", "System.Net.Http", "4.3.0", "4.3.4") ],
             [ FilesystemChange("src/mylibs/alpha.csproj", b"content") ],
-            self.__create_report(Dependency("dotnet", "System.Net.Http", "4.3.0", "4.3.4"))
+            self.__create_report(Dependency("dotnet", "System.Net.Http", "4.3.0", "4.3.4")),
+            None
         )
         changeTwo = PrChange(
             "uuid",
             [ Dependency("dotnet", "System.Text.RegularExpressions", "4.3.0", "4.3.4") ],
             [ FilesystemChange("src/mylib/beta.csproj", b"content") ],
-            self.__create_report(Dependency("dotnet", "System.Text.RegularExpressions", "4.3.0", "4.3.4"))
+            self.__create_report(Dependency("dotnet", "System.Text.RegularExpressions", "4.3.0", "4.3.4")),
+            None
         )
 
         changeOne.merge(changeTwo)
