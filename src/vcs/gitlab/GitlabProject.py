@@ -196,7 +196,7 @@ class GitlabProject(RepositoryInterface):
 
     def __do_get_mrs(self, state: str, source_branch: str, target_branch: str) -> List[PullRequestInterface]:
         mrs = []
-        for mr in self.pyGitlabProject.mergerequests.list(state=state, source_branch=source_branch, target_branch=target_branch):
+        for mr in self.pyGitlabProject.mergerequests.list(state=state, source_branch=source_branch, target_branch=target_branch, get_all=True):
             mrs.append(GitlabMergeRequest(mr))
 
         return mrs

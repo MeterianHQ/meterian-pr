@@ -199,12 +199,13 @@ def create_vcs_platform(args):
 
     return vcs
 
-def record_pr_info_on_report(meterian_project_id: str, pr_infos_by_dep: dict):
+def record_pr_info_on_report(meterian_project_id: str, pr_infos_by_dep: dict, open_prs_links: List[str]):
     print("Recording PR information to report")
     log.debug("Requested to record PR information. Prepping data...")
     data = {}
     data["createdAt"] = datetime.strftime(datetime.now(), '%d/%m/%Y-%H:%M:%S')
     data["entries"] = []
+    data["openPrLinks"] = open_prs_links
     for dependency, pr_infos in pr_infos_by_dep.items():
         entry = {}
         entry["dependency"] = dependency.to_payload()["dependency"]
@@ -375,7 +376,11 @@ if __name__ ==  "__main__":
 
         if record_prs == True:
             if meterian_project_id:
-                record_pr_info_on_report(meterian_project_id, pr_infos_by_dep)
+                open_prs_links = []
+                for prs in remote_repo.get_open_pulls(base=args.branch):
+                    open_prs_links.append(prs.get_url())
+
+                record_pr_info_on_report(meterian_project_id, pr_infos_by_dep, open_prs_links)
             else:
                 log.error("Unexpected: report ID is unknown, no PR information can be recorded")
     
