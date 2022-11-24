@@ -42,7 +42,7 @@ WORK_DIR = None
 
 PR_REPORT_FILENAME_PREFIX = ".pr_report_"
 
-VERSION = "1.1.13"
+VERSION = "1.1.14"
 
 METERIAN_ENV = os.environ["METERIAN_ENV"] if "METERIAN_ENV" in os.environ else "www"
 
@@ -254,6 +254,9 @@ def submit_pr(pr_change: PrChange, branch: str, pr_text_content: dict, meterian_
 if __name__ ==  "__main__":
     print()
 
+    print("Meterian-pr v" + str(VERSION))
+
+    print()
     args = parse_args()
     initLogging(args)
 
