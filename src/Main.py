@@ -50,6 +50,7 @@ log = logging.getLogger("Main")
 
 class HelpingParser(argparse.ArgumentParser):
     def error(self, message):
+        sys.stderr.write("Meterian-pr v" + str(VERSION) + "\n\n")
         sys.stderr.write('error: %s\n' % message)
         self.print_help()
         sys.stderr.write('\n')
@@ -254,11 +255,11 @@ def submit_pr(pr_change: PrChange, branch: str, pr_text_content: dict, meterian_
 if __name__ ==  "__main__":
     print()
 
-    print("Meterian-pr v" + str(VERSION))
-
-    print()
     args = parse_args()
     initLogging(args)
+
+    print("Meterian-pr v" + str(VERSION))
+    print()
 
     WORK_DIR = args.workdir
     if os.path.exists(WORK_DIR) is False:
