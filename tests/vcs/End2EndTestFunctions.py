@@ -23,3 +23,6 @@ class End2EndTestFunctions:
             logger.setLevel(level)
         
         End2EndTestFunctions.log.debug('Logging initiated')
+
+    def raise_unset_envvar_exception(env_name):
+        raise ValueError(" Required " + env_name + " is unset")

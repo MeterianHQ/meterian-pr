@@ -48,7 +48,9 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
                 hasattr(subclass, 'get_pr_label') and
                 callable(subclass.get_pr_label) and
                 hasattr(subclass, 'get_issue_label') and
-                callable(subclass.get_issue_label) or
+                callable(subclass.get_issue_label) and
+                hasattr(subclass, 'get_head_branch_filter_key') and
+                callable(subclass.get_head_branch_filter_key) or
                 NotImplemented)
 
     @abc.abstractmethod
@@ -132,4 +134,9 @@ class RepositoryInterface(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_issue_label(self) -> LabelData:
         """Gets main label data for labelling issues"""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_head_branch_filter_key(self, branch_name: str) -> str:
+        """Gets the appropriate head branch filter key to use when searching pull requests"""
         raise NotImplementedError

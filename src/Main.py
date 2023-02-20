@@ -42,7 +42,7 @@ WORK_DIR = None
 
 PR_REPORT_FILENAME_PREFIX = ".pr_report_"
 
-VERSION = "1.1.14"
+VERSION = "1.1.15"
 
 METERIAN_ENV = os.environ["METERIAN_ENV"] if "METERIAN_ENV" in os.environ else "www"
 

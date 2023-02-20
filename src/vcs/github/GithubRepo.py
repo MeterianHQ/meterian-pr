@@ -7,6 +7,9 @@ from github.GithubException import UnknownObjectException
 from github.Label import Label
 from github.Repository import Repository as PyGithubRepository
 from github.InputGitAuthor import InputGitAuthor
+from github.InputGitTreeElement import InputGitTreeElement
+from github.GitBlob import GitBlob
+from github.GitCommit import GitCommit
 from ..CommitAuthor import CommitAuthor
 from ..PrChangesGenerator import FilesystemChange
 from .GithubIssue import GithubIssue
@@ -125,7 +128,39 @@ class GithubRepo(RepositoryInterface):
             return False
 
     def commit_changes(self, author: CommitAuthor, message: str, branch: str, changes: List[FilesystemChange]) -> bool:
-        return super().commit_changes(author, message, branch, changes)
+        if len(changes) < 1:
+            self.__log.debug("No changes provided to commit: changes=%s", str(changes))
+            return False
+
+        if any(branch == repo_branch.name for repo_branch in self.pyGithubRepo.get_branches()):
+            try:
+                head_commit = self.__get_head_commit(branch)
+                base_git_tree = self.pyGithubRepo.get_git_tree(sha=head_commit.sha)
+
+                tree_elements = self.__to_tree_elements(changes)
+                new_git_tree = self.pyGithubRepo.create_git_tree(tree_elements, base_git_tree)
+
+                new_commit = self.pyGithubRepo.create_git_commit(message, new_git_tree, [head_commit])
+                git_ref = self.pyGithubRepo.get_git_ref("heads/" + branch)
+                git_ref.edit(sha=new_commit.sha)
+                return True
+            except:
+                self.__log.warning("Unexpected exception caught while dealing with multiple changes commit", exc_info=1)
+                return False
+        else:
+            self.__log.warning("Branch %s was not found, no commit will be made at this stage", branch)
+            return False
+
+    def __get_head_commit(self, branch: str) -> GitCommit:
+        sha = self.pyGithubRepo.get_branch(branch).commit.sha
+        return self.pyGithubRepo.get_git_commit(sha=sha)
+
+    def __to_tree_elements(self, changes: List[FilesystemChange]) -> List[InputGitTreeElement]:
+        elements = []
+        for change in changes:
+            blob = self.pyGithubRepo.create_git_blob(change.content.decode(), "utf-8")
+            elements.append(InputGitTreeElement(path=change.rel_file_path, mode="100644", type="blob", sha=blob.sha))
+        return elements
 
     def create_pull_request(self, title: str, body: str, head: str, base: str, labels: List[str] = []) -> PullRequestInterface:
         try:
@@ -169,6 +204,9 @@ class GithubRepo(RepositoryInterface):
         except GithubException:
             self.__log.debug("Unexpected exception caught while creating issue '%s'", title, exc_info=1)
         return issue
+
+    def get_head_branch_filter_key(self, branch_name: str) -> str:
+        return self.get_owner() + ":" + branch_name
 
     def __do_get_pulls(self, state: str, head: str, base: str) -> List[PullRequestInterface]:
         the_list = []
