@@ -81,7 +81,7 @@ jobs:
         run: sh scripts/archive_tool.sh meterian-pr_alpine-linux.tar.gz
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.1
         with:
           name: alpine-linux-package
           path: meterian-pr_alpine-linux.tar.gz
