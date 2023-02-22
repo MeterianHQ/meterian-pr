@@ -31,7 +31,10 @@ class VcsHubFactory:
             if envvar in os.environ:
                 try:
                     pyGithub = PyGithub(os.environ[envvar], base_url=self.api_base_url)
-                    self.__log.debug("Currently authenticated as %s", pyGithub.get_user().login)
+
+                    self.__check_good_gh_credentials(pyGithub)
+
+                    self.__log.debug("Currently authenticated as %s", str(pyGithub.get_user()))
                     vcshub = Github(pyGithub)
                     self.__log.debug("Created instace of GitHub %s", vcshub)
                     return vcshub
@@ -56,3 +59,10 @@ class VcsHubFactory:
                 self.__log.debug("The Gitlab token was not found in your environment")
 
         return None
+
+    def __check_good_gh_credentials(self, gh: PyGithub):
+        try:
+            gh.get_user().login
+        except Exception as ex:
+            if "401" in str(ex):
+                raise ex
