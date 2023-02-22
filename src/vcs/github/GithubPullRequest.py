@@ -29,3 +29,6 @@ class GithubPullRequest(PullRequestInterface):
 
     def get_body(self) -> str:
         return self.pyGithubPullRequest.body
+
+    def __str__(self) -> str:
+        return "GithubPullRequest [ title=" + self.get_title() + ", html_url=" + self.get_url() + " ]"

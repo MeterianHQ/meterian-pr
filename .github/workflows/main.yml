@@ -59,36 +59,37 @@ jobs:
           path: meterian-pr_linux.tar.gz
           retention-days: 1
 
-  build_alpine_linux:
-    needs: test_routine
-    name: "Build (Alpine Linux)"
-    runs-on: ubuntu-latest
-    container:
-      image: fydeinc/pyinstaller@sha256:bbad26fc29dc6852033901f25f8f52ec19bdf499e4915309cd2a489fff1c6379
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+  # build_alpine_linux:
+  #   needs: test_routine
+  #   name: "Build (Alpine Linux)"
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: fydeinc/pyinstaller@sha256:bbad26fc29dc6852033901f25f8f52ec19bdf499e4915309cd2a489fff1c6379
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v2
 
-      - name: Build binary
-        env:
-            PLATFORMS: "alpine,linux"
-            SRCDIR: ${{ github.workspace }}
-        run: |
-             /switch_to_alpine.sh --paths=src --name=meterian-pr --hidden-import _cffi_backend src/Main.py
-             ./dist/alpine/meterian-pr --version
+  #     - name: Build binary
+  #       env:
+  #           PLATFORMS: "alpine,linux"
+  #           SRCDIR: ${{ github.workspace }}
+  #       run: |
+  #            /switch_to_alpine.sh --paths=src --name=meterian-pr --hidden-import _cffi_backend src/Main.py
+  #            ./dist/alpine/meterian-pr --version
 
-      - name: Package binary
-        run: sh scripts/archive_tool.sh meterian-pr_alpine-linux.tar.gz
+  #     - name: Package binary
+  #       run: sh scripts/archive_tool.sh meterian-pr_alpine-linux.tar.gz
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: alpine-linux-package
-          path: meterian-pr_alpine-linux.tar.gz
-          retention-days: 1
+  #     - name: Upload artifact
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: alpine-linux-package
+  #         path: meterian-pr_alpine-linux.tar.gz
+  #         retention-days: 1
 
   draft_release:
-    needs: [build_linux, build_alpine_linux]
+    # needs: [build_linux, build_alpine_linux]
+    needs: [build_linux]
     name: "Draft release"
     runs-on: ubuntu-latest
     steps:
@@ -111,10 +112,12 @@ jobs:
         if: github.ref_name == 'main'
         run: |
              VERSION=$(cat /tmp/version.txt)
-             gh release create $VERSION --generate-notes --draft /tmp/artifacts/linux-package/meterian-pr_linux.tar.gz /tmp/artifacts/alpine-linux-package/meterian-pr_alpine-linux.tar.gz
+             #  gh release create $VERSION --generate-notes --draft /tmp/artifacts/linux-package/meterian-pr_linux.tar.gz /tmp/artifacts/alpine-linux-package/meterian-pr_alpine-linux.tar.gz
+             gh release create $VERSION --generate-notes --draft /tmp/artifacts/linux-package/meterian-pr_linux.tar.gz
 
       - name: Draft pre-release
         if: github.ref_name != 'main'
         run: |
              VERSION="$(cat /tmp/version.txt)-canary"
-             gh release create $VERSION --generate-notes --target $GITHUB_REF_NAME --prerelease --draft /tmp/artifacts/linux-package/meterian-pr_linux.tar.gz /tmp/artifacts/alpine-linux-package/meterian-pr_alpine-linux.tar.gz
+             #  gh release create $VERSION --generate-notes --target $GITHUB_REF_NAME --prerelease --draft /tmp/artifacts/linux-package/meterian-pr_linux.tar.gz /tmp/artifacts/alpine-linux-package/meterian-pr_alpine-linux.tar.gz
+             gh release create $VERSION --generate-notes --target $GITHUB_REF_NAME --prerelease --draft /tmp/artifacts/linux-package/meterian-pr_linux.tar.gz

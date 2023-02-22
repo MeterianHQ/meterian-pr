@@ -194,6 +194,10 @@ class GitlabProject(RepositoryInterface):
     def get_issue_label(self) -> LabelData:
         return self.ISSUE_LABEL
 
+    def get_head_branch_filter_key(self, branch_name: str) -> str:
+        # The filter key for pulls that uses head user or head organization and branch name in the format of user:ref-name or organization:ref-name doesn't appear to be be supported on GitLab
+        return branch_name
+
     def __do_get_mrs(self, state: str, source_branch: str, target_branch: str) -> List[PullRequestInterface]:
         mrs = []
         for mr in self.pyGitlabProject.mergerequests.list(state=state, source_branch=source_branch, target_branch=target_branch, get_all=True):

@@ -100,18 +100,15 @@ class PullRequestSubmitter:
         self.__log.debug("Getting pulls through pulls supplier %s", str(pulls_supplier))
 
         if owner is None or owner == "":
-            return pulls_supplier(head_branch, base_branch)
-
-        self.__log.debug("Attempting to fetch pulls with head user/organisation filter")
-        head_branch_filter = owner + ":" + self.branch_helper.as_branch_name(head_branch)
-        pulls = pulls_supplier(head_branch_filter, base_branch)
-        self.__log.debug("Retrieved PRs %s with head=%s and base=%s", pulls, head_branch_filter, base_branch)
-
-        if len(pulls) == 0:
             pulls = pulls_supplier(head_branch, base_branch)
             self.__log.debug("Retrieved PRs %s with head=%s and base=%s", pulls, head_branch, base_branch)
-
-        return pulls
+            return pulls
+        else:
+            self.__log.debug("Attempting to fetch pulls with head branch filter key")
+            head_branch_filter = self.repo.get_head_branch_filter_key(self.branch_helper.as_branch_name(head_branch))
+            pulls = pulls_supplier(head_branch_filter, base_branch)
+            self.__log.debug("Retrieved PRs %s with head=%s and base=%s", pulls, head_branch_filter, base_branch)
+            return pulls
 
     def __edit_pr(self, pr: PullRequestInterface, title: str, body: str):
         """Helper method to only edit pr title and body where these actually change"""

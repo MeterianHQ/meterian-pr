@@ -19,7 +19,7 @@ class Github(VcsHubInterface):
 
     def get_repository(self, name):
         try:
-            self.__log.debug("Currently authenticated as %s", self.pyGithub.get_user().login)
+            self.__log.debug("Currently authenticated as %s", str(self.pyGithub.get_user()))
             self.__log.debug("Getting repository %s", name)
             repo = self.pyGithub.get_repo(name)
             return GithubRepo(repo)
