@@ -17,33 +17,26 @@ class IssueSubmitter:
 
     def submit(self, issue_text_content: dict):
         if issue_text_content[self.ISSUE_CONTENT_TITLE_KEY] == "":
-            print("No problems were detected in your repository therefore no issues will be opened")
-            return
-
-        if not self.repo.has_issues_enabled():
-            print("This repository does not have issues enabled, no issues will be opened")
-            return
+            self.__log.info("No problems were detected in your repository therefore no issues will be submitted")
+            return None
 
         issues = self.vcs_hub.get_issues(self.repo, issue_text_content[self.ISSUE_CONTENT_TITLE_KEY])
         if issues is None:
-            print("Unable to retrieve issues")
-            return
+            self.__log.error("Failed to retrieve issues from your repository")
+            return None
 
         for issue in issues:
             if issue_text_content[self.ISSUE_CONTENT_TITLE_KEY] == issue.get_title() and issue_text_content[self.ISSUE_CONTENT_BODY_KEY] == issue.get_body():
                 if issue.is_open():
-                    print("The issue has already been opened, view it here:\n" + issue.get_url())
-                    return
+                    self.__log.debug("The issue has already been opened, view it here:\n" + issue.get_url())
+                    return None
                 else:
-                    print("The issue already exists and it has been closed, view it here:\n" + issue.get_url())
-                    return
+                    self.__log.debug("The issue already exists and it has been closed, view it here:\n" + issue.get_url())
+                    return None
 
         labels = self.__get_issue_labels()
         new_issue = self.repo.create_issue(issue_text_content[self.ISSUE_CONTENT_TITLE_KEY], issue_text_content[self.ISSUE_CONTENT_BODY_KEY], labels)
-        if not new_issue:
-            print("Unable to create new issue")
-        else:
-            print("A new issue has been opened, view it here:\n" + new_issue.get_url())
+        return new_issue
 
     def __get_issue_labels(self) -> List[str]:
         label = self.repo.get_issue_label()

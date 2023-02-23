@@ -170,14 +170,18 @@ class PrChangesGenerator():
         return location.relative_to(root_folder)
 
     def __collect_dependencies(self, pr_report: dict) -> List[Dependency]:
+        deps = PrChangesGenerator.collect_dependencies_from_report(pr_report)
+        return deps if len(deps) > 0 else None
+
+    def collect_dependencies_from_report(pr_report: dict) -> List[Dependency]:
         # collect autofix dependencies
         deps = []
         for change in pr_report["autofix"]["changes"]:
             dep = Dependency(change["language"], change["name"], change["version"], change["upgradedTo"])
             deps.append(dep)
-            self.__logger.debug("Collected dependency %s from autofix report", str(dep))
+            PrChangesGenerator.__logger.debug("Collected dependency %s from autofix report", str(dep))
             
-        return deps if len(deps) > 0 else None
+        return deps
 
     def __collect_fs_changes(self) -> List[FilesystemChange]:
         try:
@@ -238,6 +242,9 @@ class PrChangesGenerator():
             if last_index_of_dot != -1:
                 pr_no = file.name[last_index_of_dot+1:]
         return pr_no
+
+    def fetch_pr_reports(work_dir: Path) -> List[Path]:
+        return PrChangesGenerator.__fetch_pr_reports(work_dir)
 
     def __fetch_pr_reports(work_dir: Path) -> List[Path]:
         PrChangesGenerator.__logger.debug("Fetching PR reports in %s", str(work_dir))
