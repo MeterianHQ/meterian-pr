@@ -42,7 +42,7 @@ WORK_DIR = None
 
 PR_REPORT_FILENAME_PREFIX = ".pr_report_"
 
-VERSION = "1.1.17"
+VERSION = "1.1.18"
 
 METERIAN_ENV = os.environ["METERIAN_ENV"] if "METERIAN_ENV" in os.environ else "www"
 
@@ -96,12 +96,6 @@ def parse_args():
         "--always-open-prs",
         action='store_true',
         help="By default identical pull requests are not opened, with this flag you can override this behaviour to always open PRs"
-    )
-
-    parser.add_argument(
-        "--json-report",
-        metavar="PATH",
-        help="Allows to specify the path to the Meterian JSON report. This option is required if 'ISSUE' is the action being used (view help for more details on actions)"
     )
 
     parser.add_argument(
@@ -390,41 +384,52 @@ if __name__ ==  "__main__":
     
 
     if "ISSUE" == args.action:
+        if not remote_repo.has_issues_enabled():
+            sys.stderr.write("This repository does not have issues enabled, no issues will be opened\n")
+            sys.stderr.write("\n")
+            sys.exit(-1)
+
         issue_submitter = IssueSubmitter(vcsPlatform, remote_repo)
 
-        meterian_report = None
-        if args.json_report:
-            meterian_json_report_path = os.path.abspath(args.json_report)
-            if os.path.exists(meterian_json_report_path) is False:
-                sys.stderr.write("Meterian JSON report not found @ " + str(meterian_json_report_path) + "\n")
-                sys.stderr.write("\n")
-                sys.exit(-1)
-            else:
+        pr_reports = PrChangesGenerator.fetch_pr_reports(Path(WORK_DIR))
+        if len(pr_reports) > 0:
+            reports_to_new_issues = {}
+            for report in pr_reports:
                 try:
-                    meterian_report = open(meterian_json_report_path)
-                    meterian_json_report = json.load(meterian_report)
-                    meterian_report.close()
+                    with open(str(report)) as report_file:
+                        meterian_json_report = json.load(report_file)
+                        issue_text_content = generate_contribution_content(gitbot_msg_generator, meterian_json_report, {
+                            GitbotMessageGenerator.ISSUE_OPT_KEY: True,
+                            GitbotMessageGenerator.AUTOFIX_OPT_KEY: False,
+                            GitbotMessageGenerator.REPORT_OPT_KEY: False,
+                            "issueFromAutofix": True
+                        }, "licenses")
+                        if issue_text_content:
+                            new_issue = issue_submitter.submit(issue_text_content)
+                            if new_issue:
+                                reports_to_new_issues[report] = new_issue
+                        else:
+                            log.warn("An error occurred and the generation of the issue content failed given report %s", str(report))
+
                 except:
-                    sys.stderr.write("Unable to load Meterian JSON report at %s \n" % str(meterian_json_report_path))
-                    sys.stderr.write("Ensure it is a valid JSON report\n")
-                    sys.stderr.write("\n")
-                    sys.exit(-1)
+                    log.error("Unable to load Meterian JSON report %s", str(report), exc_info=1)
+            if len(reports_to_new_issues) > 0:
+                print("New issues opened:")
+                for report, issue in reports_to_new_issues.items():
+                    with open(str(report)) as report_file:
+                        meterian_json_report = json.load(report_file)
+                        deps = PrChangesGenerator.collect_dependencies_from_report(meterian_json_report)
+                        if len(deps) > 0:
+                            dep = deps[0]
+                            print("- " + issue.get_url() + " - " + "reports about " + dep.language + "/" + dep.name)
+            else:
+                print("No new issues were opened")
+            print()
         else:
-            sys.stderr.write("Unable to open issue, Meterian JSON report at not provided\n")
+            sys.stderr.write("Unable to open issues, no Meterian JSON reports were found\n")
             sys.stderr.write("\n")
             sys.exit(-1)
 
-        issue_text_content = generate_contribution_content(gitbot_msg_generator, meterian_json_report, {
-            GitbotMessageGenerator.ISSUE_OPT_KEY: True,
-            GitbotMessageGenerator.AUTOFIX_OPT_KEY: False,
-            GitbotMessageGenerator.REPORT_OPT_KEY: False,
-        })
-        if not issue_text_content:
-            sys.stderr.write("Unable to generate the text content for the issue\n")
-            sys.stderr.write("\n")
-            sys.exit(-1)
-
-        issue_submitter.submit(issue_text_content)
 
 
 
