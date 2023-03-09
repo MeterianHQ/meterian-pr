@@ -42,7 +42,7 @@ WORK_DIR = None
 
 PR_REPORT_FILENAME_PREFIX = ".pr_report_"
 
-VERSION = "1.1.18"
+VERSION = "1.1.19"
 
 METERIAN_ENV = os.environ["METERIAN_ENV"] if "METERIAN_ENV" in os.environ else "www"
 
@@ -333,8 +333,8 @@ if __name__ ==  "__main__":
     if "PR" == args.action:
         reports_and_changes = PrChangesGenerator.fetch_changed_manifests(Path(WORK_DIR))
         if len(reports_and_changes) == 0:
-            sys.stderr.write("No changes were detected in your repository in order to open PRs\n\n")
-            sys.exit(-1)
+            print("No changes were detected in your repository in order to open PRs\n\n")
+            sys.exit(0)
 
         a_report = list(reports_and_changes.keys())[0]
         meterian_project_id = PrChangesGenerator.parse_pid(a_report)
@@ -385,9 +385,8 @@ if __name__ ==  "__main__":
 
     if "ISSUE" == args.action:
         if not remote_repo.has_issues_enabled():
-            sys.stderr.write("This repository does not have issues enabled, no issues will be opened\n")
-            sys.stderr.write("\n")
-            sys.exit(-1)
+            print("This repository does not have issues enabled, no issues will be opened\n\n")
+            sys.exit(0)
 
         issue_submitter = IssueSubmitter(vcsPlatform, remote_repo)
 
@@ -426,9 +425,8 @@ if __name__ ==  "__main__":
                 print("No new issues were opened")
             print()
         else:
-            sys.stderr.write("Unable to open issues, no Meterian JSON reports were found\n")
-            sys.stderr.write("\n")
-            sys.exit(-1)
+            print("No issues were detected in your repository\n\n")
+            sys.exit(0)
 
 
 
