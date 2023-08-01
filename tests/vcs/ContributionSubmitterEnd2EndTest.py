@@ -22,6 +22,7 @@ class ContributionSubmitterEnd2EndTest:
 
         repo = self.vcs_platform.get_repository(repository_name)
         always_open_prs = True if str(os.environ.get("TESTS_ALWAYS_OPEN_PRS", "")).lower() == "true" else False
+        pdf_report_path = os.environ.get("TESTS_PDF_REPORT_PATH", None)
         submitter = PullRequestSubmitter(work_dir, repo, author, always_open_prs)
 
         reports_and_changes = PrChangesGenerator.fetch_changed_manifests(Path(work_dir))
@@ -41,7 +42,7 @@ class ContributionSubmitterEnd2EndTest:
                 "issues,licenses"
             )
 
-            submitter.submit(pr_text_content, pr_change, repository_branch)
+            submitter.submit(pr_text_content, pr_change, repository_branch, pdf_report_path)
 
     def should_submit_issue(self, meterian_json_report_path: str, repository_name: str):
         issue_text_content = self.gitbot.genMessage(

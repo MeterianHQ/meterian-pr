@@ -8,7 +8,6 @@ from github.Label import Label
 from github.Repository import Repository as PyGithubRepository
 from github.InputGitAuthor import InputGitAuthor
 from github.InputGitTreeElement import InputGitTreeElement
-from github.GitBlob import GitBlob
 from github.GitCommit import GitCommit
 from ..CommitAuthor import CommitAuthor
 from ..PrChangesGenerator import FilesystemChange
@@ -21,6 +20,7 @@ from ..BranchHelper import BranchHelper
 from typing import List
 from github import GithubObject
 from ..LabelData import LabelData
+from ..gitlab.CommitData import CommitData
 
 class GithubRepo(RepositoryInterface):
 
@@ -158,7 +158,7 @@ class GithubRepo(RepositoryInterface):
     def __to_tree_elements(self, changes: List[FilesystemChange]) -> List[InputGitTreeElement]:
         elements = []
         for change in changes:
-            blob = self.pyGithubRepo.create_git_blob(change.content.decode(), "utf-8")
+            blob = self.pyGithubRepo.create_git_blob(CommitData.to_base64(change.content).decode(), "base64")
             elements.append(InputGitTreeElement(path=change.rel_file_path, mode="100644", type="blob", sha=blob.sha))
         return elements
 
