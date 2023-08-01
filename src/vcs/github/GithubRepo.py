@@ -148,7 +148,7 @@ class GithubRepo(RepositoryInterface):
                 self.__log.warning("Unexpected exception caught while dealing with multiple changes commit", exc_info=1)
                 return False
         else:
-            self.__log.warning("Branch %s was not found, no commit will be made at this stage", branch)
+            self.__log.debug("Branch %s was not found, no commit will be made at this stage", branch)
             return False
 
     def __get_head_commit(self, branch: str) -> GitCommit:
