@@ -1,6 +1,7 @@
 import requests
 import json
 import logging
+import os
 
 class GitbotMessageGenerator:
 
@@ -8,7 +9,8 @@ class GitbotMessageGenerator:
     ISSUE_OPT_KEY = "issue"
     REPORT_OPT_KEY = "report"
 
-    __BASE_URL = "https://services3.www.meterian.io/api/v1/gitbot/results/parse/"
+    __METERIAN_ENV = os.environ["METERIAN_ENV"] if "METERIAN_ENV" in os.environ else "www"
+    __BASE_URL = "https://services3." + __METERIAN_ENV + ".meterian.io/api/v1/gitbot/results/parse/"
     __log =  logging.getLogger("GitbotMessageGenerator")
 
     def __init__(self):
