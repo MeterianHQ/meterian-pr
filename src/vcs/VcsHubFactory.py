@@ -38,8 +38,9 @@ class VcsHubFactory:
                     vcshub = Github(pyGithub)
                     self.__log.debug("Created instace of GitHub %s", vcshub)
                     return vcshub
-                except:
-                    self.__log.error("Failed to create GitHub instance", exc_info=1)
+                except Exception as ex:
+                    self.__log.error("Failed to create GitHub instance: %s", str(ex))
+                    self.__log.debug("Failed to create GitHub instance", exc_info=1)
             else:
                 self.__log.debug("Github token not found in environment, no instance will be created")
         
@@ -53,8 +54,9 @@ class VcsHubFactory:
                     pyGitlab.auth()
                     self.__log.debug("Gitlab instance created. Currently authenticated as %s", pyGitlab.user.username)
                     return Gitlab(pyGitlab)
-                except:
-                    self.__log.error("Failed to create GitLab instance", exc_info=1)
+                except Exception as ex:
+                    self.__log.error("Failed to create GitLab instance: %s", str(ex))
+                    self.__log.debug("Failed to create GitLab instance", exc_info=1)
             else:
                 self.__log.debug("The Gitlab token was not found in your environment")
 

@@ -410,8 +410,11 @@ if __name__ ==  "__main__":
                         else:
                             log.warn("An error occurred and the generation of the issue content failed given report %s", str(report))
 
-                except:
-                    log.error("Unable to load Meterian JSON report %s", str(report), exc_info=1)
+                except Exception as ex:
+                    log.error("Unable to load Meterian JSON report: %s", str(ex))
+                    log.debug("Unable to load Meterian JSON report %s", str(report), exc_info=1)
+
+
             if len(reports_to_new_issues) > 0:
                 print("New issues opened:")
                 for report, issue in reports_to_new_issues.items():

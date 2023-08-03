@@ -130,9 +130,10 @@ class GitlabProject(RepositoryInterface):
                     'ref': parent_branch_name
                 })
                 self.__log.debug("New branch %s successfully created with result=%s", new_branch_name, str(res))
-            except:
+            except Exception as ex:
                 res = None
-                self.__log.error("Unexpected: failed to create branch %s from parent branch %s on project %s", new_branch_name, parent_branch_name, self.get_full_name(), exc_info=1)
+                self.__log.error("Unexpected: failed to create branch %s from parent branch %s on project %s: %s", new_branch_name, parent_branch_name, self.get_full_name(), str(ex))
+                self.__log.debug("Unexpected: failed to create branch %s from parent branch %s on project %s", new_branch_name, parent_branch_name, self.get_full_name(), exc_info=1)
         else:
             self.__log.debug("Branch %s already exists, it won't be created", new_branch_name)
 
@@ -151,8 +152,9 @@ class GitlabProject(RepositoryInterface):
             issue = GitlabIssue(self.pyGitlabProject.issues.create(payload))
             self.__log.debug("Created issue %s", str(issue))
             return issue
-        except:
-            self.__log.error("Could not create issue (%s) on project %s", str(payload), self.get_full_name(), exc_info=1)
+        except Exception as ex:
+            self.__log.error("Could not create issue (%s) on project %s: %s", str(payload), self.get_full_name(), str(ex))
+            self.__log.debug("Could not create issue (%s) on project %s", str(payload), self.get_full_name(), exc_info=1)
             return None
 
     def create_label(self, name: str, description: str, color: str, text_color: str) -> bool:
@@ -173,8 +175,9 @@ class GitlabProject(RepositoryInterface):
             mr = GitlabMergeRequest(self.pyGitlabProject.mergerequests.create(payload))
             self.__log.debug("Created MR %s", str(mr))
             return mr
-        except:
-            self.__log.error("Could not create MR (%s) on project %s", str(payload), self.get_full_name(), exc_info=1)
+        except Exception as ex:
+            self.__log.error("Could not create MR (%s) on project %s: %s", str(payload), self.get_full_name(), str(ex))
+            self.__log.debug("Could not create MR (%s) on project %s", str(payload), self.get_full_name(), exc_info=1)
             return None
 
     def has_issues_enabled(self) -> bool:

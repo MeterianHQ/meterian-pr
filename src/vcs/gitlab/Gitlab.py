@@ -44,6 +44,7 @@ class Gitlab(VcsHubInterface):
             project = self.pyGitlab.projects.get(name)
             self.__log.debug("Found project %s", project)
             return project
-        except:
-            self.__log.error("Project %s was not found", name, exc_info=1)
+        except Exception as ex:
+            self.__log.error("Project %s was not found: %s", name, str(ex))
+            self.__log.debug("Project %s was not found", name, exc_info=1)
             return None

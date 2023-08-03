@@ -23,8 +23,9 @@ class Github(VcsHubInterface):
             self.__log.debug("Getting repository %s", name)
             repo = self.pyGithub.get_repo(name)
             return GithubRepo(repo)
-        except UnknownObjectException:
-            self.__log.error("Repo %s was not found", name, exc_info=1)
+        except UnknownObjectException as ex:
+            self.__log.error("Repo %s was not found: %s", name, str(ex))
+            self.__log.debug("Repo %s was not found", name, exc_info=1)
             return None
     
     def get_issues(self, repository: RepositoryInterface, title: str) -> List[IssueInterface]:
@@ -38,7 +39,8 @@ class Github(VcsHubInterface):
             self.__log.debug("Issues found %s", str(results))
             return results
             
-        except GithubException:
-            self.__log.error("Unexpected GithubException caught while searching for issue with query %s", query, exc_info=1)
+        except GithubException as ex:
+            self.__log.error("Unexpected GithubException caught while searching for issue with query %s: %s", query, str(ex))
+            self.__log.debug("Unexpected GithubException caught while searching for issue with query %s", query, exc_info=1)
         
         return None

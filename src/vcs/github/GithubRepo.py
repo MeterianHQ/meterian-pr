@@ -177,8 +177,9 @@ class GithubRepo(RepositoryInterface):
 
             self.__log.debug("Created pull request %s", str(pr))
             return GithubPullRequest(pr)
-        except GithubException:
-            self.__log.error("Unexpected exception caught while creating pull request", exc_info=1)
+        except GithubException as ex:
+            self.__log.error("Unexpected exception caught while creating pull request: %s", str(ex))
+            self.__log.debug("Unexpected exception caught while creating pull request", exc_info=1)
             return None
 
     def get_open_pulls(self, head: str = None, base: str = None) -> List[PullRequestInterface]:
