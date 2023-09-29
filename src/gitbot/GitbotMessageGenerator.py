@@ -9,7 +9,7 @@ class GitbotMessageGenerator:
     ISSUE_OPT_KEY = "issue"
     REPORT_OPT_KEY = "report"
 
-    __METERIAN_ENV = os.environ["METERIAN_ENV"] if "METERIAN_ENV" in os.environ else "www"
+    __METERIAN_ENV = os.environ["METERIAN_ENV"] if "METERIAN_ENV" in os.environ and os.environ["METERIAN_ENV"] == "qa" else "www"
     __BASE_URL = "https://services3." + __METERIAN_ENV + ".meterian.io/api/v1/gitbot/results/parse/"
     __log =  logging.getLogger("GitbotMessageGenerator")
 
