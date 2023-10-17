@@ -18,7 +18,7 @@ Alternatively you can download the source code (either from the [releases](https
 
 ```
 mkdir -p /usr/share/meterian-pr; git clone https://github.com/MeterianHQ/meterian-pr.git /usr/share/meterian-pr/
-pip3 install /usr/share/meterian-pr/requirements.txt
+pip3 install -r /usr/share/meterian-pr/requirements.txt
 ln -s /usr/share/meterian-pr/src/Main.py /usr/bin/meterian-pr
 ```
 
@@ -35,7 +35,7 @@ $ export GITLAB_TOKEN="glpat-q12-Wc***"
 
 ### Meterian JSON report
 
-As mentioned earlier, `meterian-pr` uses the results of the Meterian autofix to open PRs and issues. These results are captured in JSON reports that the meterian client generates.
+As mentioned earlier, `meterian-pr` uses the results of the Meterian [autofix](https://docs.meterian.io/the-client/command-line-parameters/advanced-options/autofix) to open PRs and issues. These results are captured in JSON reports that the meterian client generates.
 
 Scan your project as shown below to generate the JSON reports needed to open pull requests and issues
 
