@@ -43,7 +43,7 @@ class GitlabProject(RepositoryInterface):
         self.namespace = self.__getOrDefault(self.pyGitlabProject.namespace, 'path', None)
         self.name = self.pyGitlabProject.path
         self.default_branch = self.pyGitlabProject.default_branch
-        self.issues_enabled = self.pyGitlabProject.issues_enabled
+        self.issues_enabled = self.__is_issues_enabled()
 
         # despite having access to a project you may still not access to ownership info
         if hasattr(pyGitlabProject, "owner"):
@@ -241,6 +241,10 @@ class GitlabProject(RepositoryInterface):
             self.__log.debug("Unable to create label %s for project %s", label_data.name, self.get_full_name(), exc_info=1)
 
         return label
+
+    def __is_issues_enabled(self):
+        count = len(self.pyGitlabProject.issues.gitlab.projects.list(with_issues_enabled=True, id_after=self.pyGitlabProject.id-1, id_before=self.pyGitlabProject.id+1))
+        return count > 0
 
     def __str__(self):
         return "GitlabProject [ namespace=" + str(self.namespace) + ", name=" + str(self.name) + ", default_branch=" + str(self.default_branch) + ", owner=" + str(self.owner) + ", issues_enabled=" + str(self.issues_enabled) + " ]"

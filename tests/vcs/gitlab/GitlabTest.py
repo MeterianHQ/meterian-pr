@@ -16,10 +16,14 @@ class GitlabTest(unittest.TestCase):
     def setUp(self) -> None:
         self.pyGitlab = Mock(spec=PyGitlab)
         self.gitlab = Gitlab(self.pyGitlab)
-        self.projects = Mock(spec=ProjectManager)
+
+        self.projects = MagicMock(spec=ProjectManager)
         self.pyGitlab.projects = self.projects
+
         self.issues = Mock(spec=IssueManager)
         self.pyGitlab.issues = self.issues
+
+        self.issues.gitlab = self.pyGitlab
 
     def test_should_get_none_when_repository_is_not_found(self):
         self.pyGitlab.projects.get = MagicMock(side_effect=GitlabHttpError("404 Project Not Found", 404, None))
@@ -41,7 +45,7 @@ class GitlabTest(unittest.TestCase):
 
     def test_should_fetch_issues_by_title(self):
         self.issues.list = MagicMock(return_value=[self.__create_open_issue("Sample issue 12345")])
-        project = self.__create_project("MyOrg/MyRepo")
+        project = self.__create_issueless_project("MyOrg/MyRepo")
         project.issues = self.issues
         self.pyGitlab.projects.get = MagicMock(return_value=project)
 
@@ -73,6 +77,9 @@ class GitlabTest(unittest.TestCase):
 
     def __create_project(self, name: str):
         return GitlabTestFunctions.create_project(name)
+
+    def __create_issueless_project(self, name: str):
+        return GitlabTestFunctions.create_issueless_project(name)
 
 
 if __name__ == "__main__":
