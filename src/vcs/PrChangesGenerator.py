@@ -124,7 +124,7 @@ class PrChangesGenerator():
 
     METERIAN_PR_REPORT_FILE_REGEX = r"^report\.json\.pr\d+$"
 
-    SUPPORTED_MANIFEST_FILES_PATTERNS = [ "^pom\.xml$", "^composer\.json$", "^Gemfile$", "^Gemfile\.lock$", "^Pipfile$", "^Pipfile\.lock$", "^package\.json$", "^package-lock\.json$", "^.*\..+proj$", "^yarn\.lock$" ]
+    SUPPORTED_MANIFEST_FILES_PATTERNS = [ "^pom\.xml$", "^composer\.json$", "^Gemfile$", "^Gemfile\.lock$", "^Pipfile$", "^Pipfile\.lock$", "^package\.json$", "^package-lock\.json$", "^.*\..+proj$", "^yarn\.lock$", "^pyproject\.toml$", "^poetry\.lock$" ]
 
     def __init__(self, root_folder: Path, relative_changes_paths: List[str]) -> None:
         self.root_folder = root_folder

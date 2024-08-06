@@ -42,7 +42,7 @@ WORK_DIR = None
 
 PR_REPORT_FILENAME_PREFIX = ".pr_report_"
 
-VERSION = "1.1.23"
+VERSION = "1.1.24"
 
 METERIAN_ENV = os.environ["METERIAN_ENV"] if "METERIAN_ENV" in os.environ else "www"
 METERIAN_DOMAIN = os.environ["METERIAN_DOMAIN"] if "METERIAN_DOMAIN" in os.environ else "meterian.io"
