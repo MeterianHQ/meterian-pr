@@ -7,7 +7,7 @@ from .PullRequestInterface import PullRequestInterface
 from .RepositoryInterface import RepositoryInterface
 from .BranchHelper import BranchHelper
 from .CommitAuthor import CommitAuthor
-from .PrChangesGenerator import FilesystemChange
+from .PrChangesGenerator import FilesystemChange, Dependency
 from .PrChangesGenerator import PrChange
 from pathlib import Path
 from typing import List
@@ -46,6 +46,7 @@ class PullRequestSubmitter:
             changes.append(FilesystemChange(pdf_report_path, pdf_report_contents))
 
         pr_branch_ref = self.__create_pr_branch_ref(base_branch, pr_change)
+        legacy_pr_branch_ref = self.__create_pr_branch_ref(base_branch, pr_change, legacy=True)
         if pr_branch_ref is None:
             print(f"Invalid branch ref was generated ({pr_branch_ref}), hence no PR will be will be opened")
             return None
@@ -56,7 +57,9 @@ class PullRequestSubmitter:
 
         opened_prs = self.__get_pulls(self.repo.get_owner(), self.branch_helper.as_branch_name(pr_branch_ref), base_branch, self.repo.get_open_pulls)
         closed_prs = self.__get_pulls(self.repo.get_owner(), self.branch_helper.as_branch_name(pr_branch_ref), base_branch, self.repo.get_closed_pulls)
-        if len(opened_prs) > 0 or len(closed_prs) > 0:
+        legacy_opened_prs = self.__get_pulls(self.repo.get_owner(), self.branch_helper.as_branch_name(legacy_pr_branch_ref), base_branch, self.repo.get_open_pulls)
+        legacy_closed_prs = self.__get_pulls(self.repo.get_owner(), self.branch_helper.as_branch_name(legacy_pr_branch_ref), base_branch, self.repo.get_closed_pulls)
+        if len(opened_prs) > 0 or len(closed_prs) > 0 or len(legacy_opened_prs) > 0 or len(legacy_closed_prs) > 0:
             self.__log.debug("Pull request for PR change %s has already been opened", str(pr_change))
             return None
 
@@ -148,32 +151,62 @@ class PullRequestSubmitter:
         file.close()
         return bytes_contents
 
-    def __create_pr_branch_ref(self, base_branch: str, pr_change: PrChange) -> str:
+    def __create_pr_branch_ref(self, base_branch: str, pr_change: PrChange, legacy: bool = False) -> str:
         pr_branch_name = self.PR_BRANCH_NAME_PREFIX
         if base_branch != self.repo.get_default_branch():
             pr_branch_name = base_branch + "_" + pr_branch_name
 
-        pr_branch_name += self.__generate_uuid(pr_change)
+        pr_branch_name += self.__generate_uuid_legacy(pr_change) if legacy else self.__generate_uuid(pr_change)
         pr_branch_name = self.branch_helper.to_branch_ref(pr_branch_name)
 
         self.__log.debug("Generated PR branch ref %s", str(pr_branch_name))
         return pr_branch_name
 
-    def __generate_uuid(self, pr_change: PrChange) -> str:
-        if self.always_open_prs:
-            return str(uuid.uuid4())
-
+    def __create_id_seed_via_dependencies(self, deps: List[Dependency]):
         deps_seed = ""
-        deps = pr_change.dependencies
         deps.sort()
         for dep in deps:
             deps_seed += dep.name+dep.version
 
+        return deps_seed
+
+    def __create_id_seed_via_manifests_content(self, manifests: List[FilesystemChange]):
         manifests_seed = b''
-        manifests = pr_change.filesystem_changes
         manifests.sort()
         for manifest in manifests:
             manifests_seed += manifest.content
+
+        return  manifests_seed
+
+    def __create_id_seed_via_manifests_relative_path(self, manifests: List[FilesystemChange]):
+        manifests_seed = ""
+        manifests.sort()
+        for manifest in manifests:
+            manifests_seed += manifest.rel_file_path
+
+        return  manifests_seed
+
+    def __generate_uuid(self, pr_change: PrChange) -> str:
+        if self.always_open_prs:
+            return str(uuid.uuid4())
+
+        deps_seed = self.__create_id_seed_via_dependencies(pr_change.dependencies)
+        manifests_seed = self.__create_id_seed_via_manifests_relative_path(pr_change.filesystem_changes)
+
+        seed = deps_seed.encode("utf-8")+manifests_seed
+        if pr_change.manifest_info:
+            seed += Path(pr_change.manifest_info["solution"]["path"]).name.encode("utf-8")
+
+        m = hashlib.md5()
+        m.update(seed)
+        return str(uuid.UUID(m.hexdigest()))
+
+    def __generate_uuid_legacy(self, pr_change: PrChange) -> str:
+        if self.always_open_prs:
+            return str(uuid.uuid4())
+
+        deps_seed = self.__create_id_seed_via_dependencies(pr_change.dependencies)
+        manifests_seed = self.__create_id_seed_via_manifests_content(pr_change.filesystem_changes)
 
         seed = deps_seed.encode("utf-8")+manifests_seed
         if pr_change.manifest_info:
