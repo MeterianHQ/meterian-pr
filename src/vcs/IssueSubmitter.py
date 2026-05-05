@@ -16,6 +16,8 @@ class IssueSubmitter:
         self.repo = repository
 
     def submit(self, issue_text_content: dict):
+        self.__log.info("Starting process to submit issue with title '" + issue_text_content[self.ISSUE_CONTENT_TITLE_KEY] + "' on repo: " + str(self.repo.get_full_name()))
+
         if issue_text_content[self.ISSUE_CONTENT_TITLE_KEY] == "":
             self.__log.info("No problems were detected in your repository therefore no issues will be submitted")
             return None
@@ -28,14 +30,16 @@ class IssueSubmitter:
         for issue in issues:
             if issue_text_content[self.ISSUE_CONTENT_TITLE_KEY] == issue.get_title() and issue_text_content[self.ISSUE_CONTENT_BODY_KEY] == issue.get_body():
                 if issue.is_open():
-                    self.__log.debug("The issue has already been opened, view it here:\n" + issue.get_url())
+                    self.__log.info("The issue has already been opened, view it here:\n" + issue.get_url())
                     return None
                 else:
-                    self.__log.debug("The issue already exists and it has been closed, view it here:\n" + issue.get_url())
+                    self.__log.info("The issue already exists and it has been closed, view it here:\n" + issue.get_url())
                     return None
 
         labels = self.__get_issue_labels()
+
         new_issue = self.repo.create_issue(issue_text_content[self.ISSUE_CONTENT_TITLE_KEY], issue_text_content[self.ISSUE_CONTENT_BODY_KEY], labels)
+        print("New issue '" + issue_text_content[self.ISSUE_CONTENT_TITLE_KEY] + "' on repo: " + str(self.repo.get_full_name()))
         return new_issue
 
     def __get_issue_labels(self) -> List[str]:
