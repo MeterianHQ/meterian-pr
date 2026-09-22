@@ -193,7 +193,7 @@ class PullRequestSubmitter:
         deps_seed = self.__create_id_seed_via_dependencies(pr_change.dependencies)
         manifests_seed = self.__create_id_seed_via_manifests_relative_path(pr_change.filesystem_changes)
 
-        seed = deps_seed.encode("utf-8")+manifests_seed
+        seed = deps_seed.encode("utf-8")+manifests_seed.encode("utf-8")
         if pr_change.manifest_info:
             seed += Path(pr_change.manifest_info["solution"]["path"]).name.encode("utf-8")
 
